@@ -92,8 +92,8 @@ Main entities:
 ## 🔹 Step 1 – Clone the Repository
 
 ```bash
-git clone https://github.com/Lukshan0607/Smart-Campus-Operations-Hub.git
-cd Smart-Campus-Operations-Hub
+https://github.com/Lukshan0607/Smart-Campus-Operations-Hub-.git
+cd Smart-Campus-Operations-Hub-
 ```
 
 ---
