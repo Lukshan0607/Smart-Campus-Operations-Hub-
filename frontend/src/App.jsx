@@ -1,32 +1,24 @@
-import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/login";
+import ResourcesPage from "./pages/ResourcesPage";
+import CreateBookingPage from "./pages/CreateBookingPage";
+import MyBookingsPage from "./pages/MyBookingsPage";
+import AdminBookingsPage from "./pages/AdminBookingsPage";
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('home');
-
-  useEffect(() => {
-    // Get current page from URL path
-    const path = window.location.pathname;
-    if (path === '/login') {
-      setCurrentPage('login');
-    } else {
-      setCurrentPage('home');
-    }
-  }, []);
-
-  const renderPage = () => {
-    switch(currentPage) {
-      case 'home':
-        return <Home />;
-      case 'login':
-        return <Login />;
-      default:
-        return <Home />;
-    }
-  };
-
-  return renderPage();
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/resources" element={<ResourcesPage />} />
+        <Route path="/book/:resourceId" element={<CreateBookingPage />} />
+        <Route path="/my-bookings" element={<MyBookingsPage />} />
+        <Route path="/admin/bookings" element={<AdminBookingsPage />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
 export default App;
