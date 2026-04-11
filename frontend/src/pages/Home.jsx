@@ -1,12 +1,9 @@
 import React from 'react';
-import Header from '../components/Header';
+import { Link } from 'react-router-dom';
 import Hero from '../components/Hero';
-import Navigation from '../components/Navigation';
-import Footer from '../components/Footer';
 import { FiBookOpen, FiCalendar, FiTool, FiUsers, FiTrendingUp, FiClock, FiMapPin, FiFilter } from 'react-icons/fi';
 
 const Home = () => {
-  // Sample data for demonstration
   const recentBookings = [
     {
       id: 1,
@@ -15,7 +12,7 @@ const Home = () => {
       date: '2026-03-24',
       time: '09:00 - 11:00',
       status: 'approved',
-      purpose: 'Data Structures Tutorial'
+      purpose: 'Data Structures Tutorial',
     },
     {
       id: 2,
@@ -24,7 +21,7 @@ const Home = () => {
       date: '2026-03-25',
       time: '14:00 - 16:00',
       status: 'pending',
-      purpose: 'Guest Lecture'
+      purpose: 'Guest Lecture',
     },
     {
       id: 3,
@@ -33,8 +30,8 @@ const Home = () => {
       date: '2026-03-23',
       time: '10:00 - 12:00',
       status: 'approved',
-      purpose: 'Project Discussion'
-    }
+      purpose: 'Project Discussion',
+    },
   ];
 
   const recentTickets = [
@@ -44,7 +41,7 @@ const Home = () => {
       category: 'Equipment',
       priority: 'High',
       status: 'in-progress',
-      createdDate: '2026-03-23'
+      createdDate: '2026-03-23',
     },
     {
       id: 2,
@@ -52,7 +49,7 @@ const Home = () => {
       category: 'Facility',
       priority: 'Medium',
       status: 'open',
-      createdDate: '2026-03-22'
+      createdDate: '2026-03-22',
     },
     {
       id: 3,
@@ -60,8 +57,8 @@ const Home = () => {
       category: 'IT',
       priority: 'High',
       status: 'resolved',
-      createdDate: '2026-03-21'
-    }
+      createdDate: '2026-03-21',
+    },
   ];
 
   const quickStats = [
@@ -71,7 +68,7 @@ const Home = () => {
       change: '+12%',
       icon: FiCalendar,
       color: 'text-blue-600',
-      bgColor: 'bg-blue-50'
+      bgColor: 'bg-blue-50',
     },
     {
       label: 'Active Tickets',
@@ -79,7 +76,7 @@ const Home = () => {
       change: '-5%',
       icon: FiTool,
       color: 'text-orange-600',
-      bgColor: 'bg-orange-50'
+      bgColor: 'bg-orange-50',
     },
     {
       label: 'Available Resources',
@@ -87,7 +84,7 @@ const Home = () => {
       change: '+8%',
       icon: FiBookOpen,
       color: 'text-green-600',
-      bgColor: 'bg-green-50'
+      bgColor: 'bg-green-50',
     },
     {
       label: 'Active Users',
@@ -95,8 +92,8 @@ const Home = () => {
       change: '+23%',
       icon: FiUsers,
       color: 'text-purple-600',
-      bgColor: 'bg-purple-50'
-    }
+      bgColor: 'bg-purple-50',
+    },
   ];
 
   const getStatusColor = (status) => {
@@ -131,14 +128,24 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-      
-      {/* Hero Section */}
       <Hero />
 
-      {/* Main Content */}
       <main className="w-full py-12">
-        {/* Quick Stats */}
+        <div className="px-4 sm:px-6 lg:px-8 mb-8 flex flex-wrap gap-3 justify-center">
+          <Link
+            to="/resources"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow hover:bg-blue-700"
+          >
+            <FiBookOpen /> Browse live resources (API)
+          </Link>
+          <Link
+            to="/admin"
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50"
+          >
+            <FiTrendingUp /> Admin dashboard
+          </Link>
+        </div>
+
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
             {quickStats.map((stat, index) => (
@@ -147,9 +154,11 @@ const Home = () => {
                   <div className={`${stat.bgColor} p-3 rounded-lg`}>
                     <stat.icon className={`w-6 h-6 ${stat.color}`} />
                   </div>
-                  <span className={`text-sm font-medium ${
-                    stat.change.startsWith('+') ? 'text-green-600' : 'text-red-600'
-                  }`}>
+                  <span
+                    className={`text-sm font-medium ${
+                      stat.change.startsWith('+') ? 'text-green-600' : 'text-red-600'
+                    }`}
+                  >
                     {stat.change}
                   </span>
                 </div>
@@ -160,124 +169,134 @@ const Home = () => {
           </div>
         </div>
 
-        {/* Recent Activity Section */}
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          {/* Recent Bookings */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">Recent Bookings</h2>
-                <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                  View All
-                </button>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-gray-900">Recent Bookings</h2>
+                  <span className="text-xs text-gray-400">Demo data</span>
+                </div>
               </div>
-            </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                {recentBookings.map((booking) => (
-                  <div key={booking.id} className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors duration-200">
-                    <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                        <FiBookOpen className="w-5 h-5 text-blue-600" />
+              <div className="p-6">
+                <div className="space-y-4">
+                  {recentBookings.map((booking) => (
+                    <div
+                      key={booking.id}
+                      className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                    >
+                      <div className="flex-shrink-0">
+                        <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
+                          <FiBookOpen className="w-5 h-5 text-blue-600" />
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium text-gray-900 truncate">{booking.resource}</p>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
+                              booking.status
+                            )}`}
+                          >
+                            {booking.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500">{booking.type}</p>
+                        <div className="flex items-center mt-1 text-xs text-gray-400">
+                          <FiClock className="w-3 h-3 mr-1" />
+                          {booking.date} • {booking.time}
+                        </div>
+                        <p className="text-xs text-gray-600 mt-1">{booking.purpose}</p>
                       </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {booking.resource}
-                        </p>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-                          {booking.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-500">{booking.type}</p>
-                      <div className="flex items-center mt-1 text-xs text-gray-400">
-                        <FiClock className="w-3 h-3 mr-1" />
-                        {booking.date} • {booking.time}
-                      </div>
-                      <p className="text-xs text-gray-600 mt-1">{booking.purpose}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Recent Tickets */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900">Recent Tickets</h2>
-                <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                  View All
-                </button>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-gray-900">Recent Tickets</h2>
+                  <span className="text-xs text-gray-400">Demo data</span>
+                </div>
               </div>
-            </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                {recentTickets.map((ticket) => (
-                  <div key={ticket.id} className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors duration-200">
-                    <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center">
-                        <FiTool className="w-5 h-5 text-orange-600" />
+              <div className="p-6">
+                <div className="space-y-4">
+                  {recentTickets.map((ticket) => (
+                    <div
+                      key={ticket.id}
+                      className="flex items-start space-x-3 p-3 hover:bg-gray-50 rounded-lg transition-colors duration-200"
+                    >
+                      <div className="flex-shrink-0">
+                        <div className="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center">
+                          <FiTool className="w-5 h-5 text-orange-600" />
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium text-gray-900 truncate">{ticket.title}</p>
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(
+                              ticket.status
+                            )}`}
+                          >
+                            {ticket.status}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-500">{ticket.category}</p>
+                        <div className="flex items-center justify-between mt-1">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getPriorityColor(
+                              ticket.priority
+                            )}`}
+                          >
+                            {ticket.priority}
+                          </span>
+                          <span className="text-xs text-gray-400">{ticket.createdDate}</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {ticket.title}
-                        </p>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
-                          {ticket.status}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-500">{ticket.category}</p>
-                      <div className="flex items-center justify-between mt-1">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
-                          {ticket.priority}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          {ticket.createdDate}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
-        </div>
 
-        {/* Quick Actions */}
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg p-8 text-white">
             <div className="text-center">
               <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
-              <p className="text-blue-100 mb-6">
-                Get started with the most common tasks
-              </p>
+              <p className="text-blue-100 mb-6">Get started with the most common tasks</p>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button className="bg-white text-blue-600 hover:bg-gray-50 px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center">
+                <Link
+                  to="/resources"
+                  className="bg-white text-blue-600 hover:bg-gray-50 px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center"
+                >
                   <FiCalendar className="w-5 h-5 mr-2" />
-                  New Booking
-                </button>
-                <button className="bg-white text-orange-600 hover:bg-gray-50 px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center">
+                  Browse resources
+                </Link>
+                <button
+                  type="button"
+                  className="bg-white text-orange-600 hover:bg-gray-50 px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center opacity-80 cursor-not-allowed"
+                  title="Maintenance module UI not wired yet"
+                >
                   <FiTool className="w-5 h-5 mr-2" />
-                  Create Ticket
+                  Tickets (soon)
                 </button>
-                <button className="bg-white text-purple-600 hover:bg-gray-50 px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center">
+                <Link
+                  to="/admin"
+                  className="bg-white text-purple-600 hover:bg-gray-50 px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center"
+                >
                   <FiFilter className="w-5 h-5 mr-2" />
-                  Browse Resources
-                </button>
+                  Admin
+                </Link>
               </div>
             </div>
           </div>
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 };
