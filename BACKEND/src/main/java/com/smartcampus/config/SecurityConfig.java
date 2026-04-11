@@ -30,6 +30,8 @@ public class SecurityConfig {
                     "/swagger-ui.html"
                 ).permitAll()
                 .requestMatchers("/api/resources/**").permitAll()
+                // Admin REST has no login/token endpoint in this module yet; allow API for UI integration (tighten when auth ships).
+                .requestMatchers("/api/admin/**").permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
