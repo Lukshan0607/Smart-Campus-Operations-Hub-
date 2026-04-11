@@ -3,67 +3,88 @@ import api from "../services/api";
 
 function MyBookingsPage() {
   const [bookings, setBookings] = useState([]);
+  const [histories, setHistories] = useState({});
+  const [expandedHistoryId, setExpandedHistoryId] = useState(null);
+  const [historyLoadingId, setHistoryLoadingId] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("ALL");
   const [cancelingId, setCancelingId] = useState(null);
 
-  const fetchMyBookings = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get("/api/bookings/my?userId=1");
-      setBookings(response.data || []);
-    } catch (error) {
-      console.error("Failed to load my bookings", error);
-      setMessage("Failed to load bookings");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     fetchMyBookings();
   }, []);
 
-  const formatDateTime = (dateTime) => {
-    if (!dateTime) return "-";
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 60000);
 
-    const date = new Date(dateTime);
-    return date.toLocaleString("en-LK", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
+    return () => clearInterval(timer);
+  }, []);
+
+  const fetchMyBookings = async () => {
+    try {
+      setLoading(true);
+      setMessage("");
+      const response = await api.get("/api/bookings/my?userId=1");
+      setBookings(response.data || []);
+    } catch (error) {
+      console.error("Failed to load my bookings", error);
+      setMessage(error?.response?.data?.message || "Failed to load bookings");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const formatRemainingTime = (minutes, overdue, status) => {
-    if (status === "CANCELLED") return "Cancelled";
-    if (status === "COMPLETED") return "Completed";
-    if (overdue) return "Overdue";
-    if (minutes <= 0) return "Due now";
+  const fetchBookingHistory = async (bookingId) => {
+    try {
+      setHistoryLoadingId(bookingId);
+      const response = await api.get(`/api/bookings/${bookingId}/history?userId=1`);
+      setHistories((prev) => ({
+        ...prev,
+        [bookingId]: response.data || [],
+      }));
+    } catch (error) {
+      console.error("Failed to load booking history", error);
+      setMessage(error?.response?.data?.message || "Failed to load booking history");
+    } finally {
+      setHistoryLoadingId(null);
+    }
+  };
 
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-
-    if (hours > 0) {
-      return `${hours}h ${mins}m remaining`;
+  const handleToggleHistory = async (bookingId) => {
+    if (expandedHistoryId === bookingId) {
+      setExpandedHistoryId(null);
+      return;
     }
 
-    return `${mins}m remaining`;
+    setExpandedHistoryId(bookingId);
+
+    if (!histories[bookingId]) {
+      await fetchBookingHistory(bookingId);
+    }
   };
 
   const handleCancelBooking = async (bookingId) => {
     try {
       setCancelingId(bookingId);
+      setMessage("");
+
       await api.patch(`/api/bookings/${bookingId}/cancel?userId=1`, {
         note: "Cancelled by user",
       });
 
       setMessage("Booking cancelled successfully");
-      fetchMyBookings();
+      await fetchMyBookings();
+
+      if (expandedHistoryId === bookingId) {
+        await fetchBookingHistory(bookingId);
+      }
     } catch (error) {
       console.error("Cancel failed", error);
       setMessage(error?.response?.data?.message || "Cancel failed");
@@ -72,12 +93,56 @@ function MyBookingsPage() {
     }
   };
 
+  const formatDateTime = (dateTime) => {
+    if (!dateTime) return "-";
+
+    return new Date(dateTime).toLocaleString("en-LK", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const formatHistoryAction = (action) => {
+    if (!action) return "-";
+    return action.replaceAll("_", " ");
+  };
+
+  const getLiveRemainingTime = (booking) => {
+    if (booking.status === "CANCELLED") return "Cancelled";
+    if (booking.status === "COMPLETED") return "Completed";
+    if (booking.status === "REJECTED") return "Rejected";
+
+    const end = new Date(booking.endTime).getTime();
+    const diffMs = end - now;
+    const diffMinutes = Math.floor(diffMs / 60000);
+
+    if (booking.overdue || diffMinutes < 0) {
+      return "Overdue";
+    }
+
+    if (diffMinutes === 0) {
+      return "Due now";
+    }
+
+    const hours = Math.floor(diffMinutes / 60);
+    const mins = diffMinutes % 60;
+
+    if (hours > 0) return `${hours}h ${mins}m remaining`;
+    return `${mins}m remaining`;
+  };
+
   const getStatusStyle = (booking) => {
     if (booking.status === "CANCELLED") {
       return "bg-gray-100 text-gray-700 border border-gray-200";
     }
     if (booking.status === "COMPLETED") {
       return "bg-blue-100 text-blue-700 border border-blue-200";
+    }
+    if (booking.status === "REJECTED") {
+      return "bg-red-100 text-red-700 border border-red-200";
     }
     if (booking.overdue) {
       return "bg-red-100 text-red-700 border border-red-200";
@@ -94,6 +159,7 @@ function MyBookingsPage() {
   const getCountdownStyle = (booking) => {
     if (booking.status === "CANCELLED") return "text-gray-500";
     if (booking.status === "COMPLETED") return "text-blue-600";
+    if (booking.status === "REJECTED") return "text-red-600";
     if (booking.overdue) return "text-red-600";
     if (booking.status === "APPROVED") return "text-green-600";
     if (booking.status === "PENDING") return "text-yellow-600";
@@ -115,12 +181,13 @@ function MyBookingsPage() {
       const matchesFilter =
         activeFilter === "ALL" ? true : booking.status === activeFilter;
 
-      const search = searchTerm.toLowerCase();
+      const search = searchTerm.toLowerCase().trim();
       const matchesSearch =
         booking.resourceName?.toLowerCase().includes(search) ||
         booking.resourceType?.toLowerCase().includes(search) ||
         booking.location?.toLowerCase().includes(search) ||
-        booking.purpose?.toLowerCase().includes(search);
+        booking.purpose?.toLowerCase().includes(search) ||
+        String(booking.id).includes(search);
 
       return matchesFilter && matchesSearch;
     });
@@ -140,7 +207,7 @@ function MyBookingsPage() {
             <div className="h-14 bg-white rounded-2xl shadow-sm"></div>
             <div className="grid gap-4">
               {[1, 2, 3].map((item) => (
-                <div key={item} className="h-52 bg-white rounded-2xl shadow-sm"></div>
+                <div key={item} className="h-64 bg-white rounded-2xl shadow-sm"></div>
               ))}
             </div>
           </div>
@@ -157,7 +224,7 @@ function MyBookingsPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
             <p className="text-gray-500 mt-1">
-              Manage, track, and review all your resource bookings
+              View current booking details and booking history separately
             </p>
           </div>
 
@@ -210,7 +277,7 @@ function MyBookingsPage() {
             <div className="w-full lg:max-w-md">
               <input
                 type="text"
-                placeholder="Search by resource, type, location, or purpose..."
+                placeholder="Search by booking ID, resource, type, location, or purpose..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:ring-2 focus:ring-gray-900"
@@ -218,7 +285,7 @@ function MyBookingsPage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {["ALL", "PENDING", "APPROVED", "COMPLETED", "CANCELLED"].map((status) => (
+              {["ALL", "PENDING", "APPROVED", "COMPLETED", "CANCELLED", "REJECTED"].map((status) => (
                 <button
                   key={status}
                   onClick={() => setActiveFilter(status)}
@@ -245,93 +312,215 @@ function MyBookingsPage() {
           </div>
         ) : (
           <div className="grid gap-5">
-            {filteredBookings.map((booking) => (
-              <div
-                key={booking.id}
-                className="bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition p-6"
-              >
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                  {/* Left */}
-                  <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-3 mb-3">
-                      <h2 className="text-xl font-bold text-gray-900">
-                        {booking.resourceName}
-                      </h2>
+            {filteredBookings.map((booking) => {
+              const bookingHistory = histories[booking.id] || [];
+              const isHistoryOpen = expandedHistoryId === booking.id;
 
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusStyle(
-                          booking
-                        )}`}
-                      >
-                        {booking.overdue && booking.status !== "CANCELLED" && booking.status !== "COMPLETED"
-                          ? "Overdue"
-                          : booking.status}
-                      </span>
-                    </div>
+              return (
+                <div
+                  key={booking.id}
+                  className="bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition p-6"
+                >
+                  <div className="flex flex-col gap-6">
+                    {/* Top row */}
+                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-3 mb-2">
+                          <h2 className="text-xl font-bold text-gray-900">
+                            {booking.resourceName || "Unnamed Resource"}
+                          </h2>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 text-sm">
-                      <div className="bg-gray-50 rounded-xl p-4">
-                        <p className="text-gray-500 mb-1">Resource Type</p>
-                        <p className="font-semibold text-gray-800">{booking.resourceType}</p>
-                      </div>
+                          <span
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusStyle(
+                              booking
+                            )}`}
+                          >
+                            {booking.overdue &&
+                            booking.status !== "CANCELLED" &&
+                            booking.status !== "COMPLETED" &&
+                            booking.status !== "REJECTED"
+                              ? "OVERDUE"
+                              : booking.status}
+                          </span>
+                        </div>
 
-                      <div className="bg-gray-50 rounded-xl p-4">
-                        <p className="text-gray-500 mb-1">Location</p>
-                        <p className="font-semibold text-gray-800">{booking.location}</p>
-                      </div>
-
-                      <div className="bg-gray-50 rounded-xl p-4">
-                        <p className="text-gray-500 mb-1">Purpose</p>
-                        <p className="font-semibold text-gray-800">{booking.purpose || "-"}</p>
-                      </div>
-
-                      <div className="bg-gray-50 rounded-xl p-4">
-                        <p className="text-gray-500 mb-1">Start Time</p>
-                        <p className="font-semibold text-gray-800">
-                          {formatDateTime(booking.startTime)}
+                        <p className="text-sm text-gray-500">
+                          Booking ID: #{booking.id}
                         </p>
                       </div>
 
-                      <div className="bg-gray-50 rounded-xl p-4">
-                        <p className="text-gray-500 mb-1">End Time</p>
-                        <p className="font-semibold text-gray-800">
-                          {formatDateTime(booking.endTime)}
-                        </p>
-                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        <button
+                          onClick={() => handleToggleHistory(booking.id)}
+                          className="px-4 py-2 rounded-xl bg-gray-100 text-gray-800 hover:bg-gray-200 transition"
+                        >
+                          {isHistoryOpen ? "Hide History" : "View History"}
+                        </button>
 
-                      <div className="bg-gray-50 rounded-xl p-4">
-                        <p className="text-gray-500 mb-1">Return Status</p>
-                        <p className={`font-semibold ${getCountdownStyle(booking)}`}>
-                          {formatRemainingTime(
-                            booking.remainingMinutes,
-                            booking.overdue,
-                            booking.status
-                          )}
-                        </p>
+                        {(booking.status === "PENDING" || booking.status === "APPROVED") && (
+                          <button
+                            onClick={() => handleCancelBooking(booking.id)}
+                            disabled={cancelingId === booking.id}
+                            className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed transition"
+                          >
+                            {cancelingId === booking.id ? "Cancelling..." : "Cancel Booking"}
+                          </button>
+                        )}
                       </div>
                     </div>
-                  </div>
 
-                  {/* Right */}
-                  <div className="w-full lg:w-auto lg:min-w-[220px] flex flex-col gap-3">
-                    <div className="bg-gray-50 rounded-xl p-4">
-                      <p className="text-sm text-gray-500 mb-1">Booking ID</p>
-                      <p className="font-semibold text-gray-800">#{booking.id}</p>
+                    {/* Current Booking Details */}
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                        Current Booking Details
+                      </h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 text-sm">
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-gray-500 mb-1">Resource Type</p>
+                          <p className="font-semibold text-gray-800">{booking.resourceType || "-"}</p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-gray-500 mb-1">Location</p>
+                          <p className="font-semibold text-gray-800">{booking.location || "-"}</p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-gray-500 mb-1">Purpose</p>
+                          <p className="font-semibold text-gray-800">{booking.purpose || "-"}</p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-gray-500 mb-1">Start Time</p>
+                          <p className="font-semibold text-gray-800">
+                            {formatDateTime(booking.startTime)}
+                          </p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-gray-500 mb-1">End Time</p>
+                          <p className="font-semibold text-gray-800">
+                            {formatDateTime(booking.endTime)}
+                          </p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-gray-500 mb-1">Remaining Time</p>
+                          <p className={`font-semibold ${getCountdownStyle(booking)}`}>
+                            {getLiveRemainingTime(booking)}
+                          </p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-gray-500 mb-1">Quantity</p>
+                          <p className="font-semibold text-gray-800">{booking.quantity ?? "-"}</p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-gray-500 mb-1">Expected Attendees</p>
+                          <p className="font-semibold text-gray-800">
+                            {booking.expectedAttendees ?? "-"}
+                          </p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-gray-500 mb-1">Created At</p>
+                          <p className="font-semibold text-gray-800">
+                            {formatDateTime(booking.createdAt)}
+                          </p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-gray-500 mb-1">Reviewed By</p>
+                          <p className="font-semibold text-gray-800">
+                            {booking.reviewedBy ?? "-"}
+                          </p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-gray-500 mb-1">Reviewed At</p>
+                          <p className="font-semibold text-gray-800">
+                            {formatDateTime(booking.reviewedAt)}
+                          </p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-gray-500 mb-1">Cancellation Reason</p>
+                          <p className="font-semibold text-gray-800">
+                            {booking.cancellationReason || "-"}
+                          </p>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-xl p-4">
+                          <p className="text-gray-500 mb-1">Rejection Reason</p>
+                          <p className="font-semibold text-gray-800">
+                            {booking.rejectionReason || "-"}
+                          </p>
+                        </div>
+                      </div>
                     </div>
 
-                    {(booking.status === "PENDING" || booking.status === "APPROVED") && (
-                      <button
-                        onClick={() => handleCancelBooking(booking.id)}
-                        disabled={cancelingId === booking.id}
-                        className="w-full px-4 py-3 rounded-xl bg-red-600 text-white font-medium hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed transition"
-                      >
-                        {cancelingId === booking.id ? "Cancelling..." : "Cancel Booking"}
-                      </button>
+                    {/* Booking History */}
+                    {isHistoryOpen && (
+                      <div className="border-t border-gray-100 pt-6">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                          Booking History
+                        </h3>
+
+                        {historyLoadingId === booking.id ? (
+                          <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
+                            Loading booking history...
+                          </div>
+                        ) : bookingHistory.length === 0 ? (
+                          <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
+                            No history available for this booking.
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {bookingHistory.map((item) => (
+                              <div
+                                key={item.id}
+                                className="rounded-xl border border-gray-200 bg-gray-50 p-4"
+                              >
+                                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                                  <div>
+                                    <p className="text-sm text-gray-500">Action</p>
+                                    <p className="font-semibold text-gray-900">
+                                      {formatHistoryAction(item.action)}
+                                    </p>
+                                  </div>
+
+                                  <div className="text-sm text-gray-500">
+                                    {formatDateTime(item.actionAt)}
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
+                                  <div>
+                                    <p className="text-gray-500">Action By</p>
+                                    <p className="font-medium text-gray-800">
+                                      {item.actionBy ?? "-"}
+                                    </p>
+                                  </div>
+
+                                  <div>
+                                    <p className="text-gray-500">Note</p>
+                                    <p className="font-medium text-gray-800">
+                                      {item.note || "-"}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
