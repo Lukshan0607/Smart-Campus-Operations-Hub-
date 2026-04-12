@@ -102,7 +102,7 @@ cd Smart-Campus-Operations-Hub-
 
 Make sure you have installed:
 
-* Java JDK 21
+* Java JDK 17
 * Node.js (v18+)
 * MySQL
 * Git
@@ -173,7 +173,7 @@ npm run dev
 Frontend runs on:
 
 ```
-http://localhost:5174
+http://localhost:5173
 ```
 
 ---
