@@ -1,6 +1,6 @@
 package com.smartcampus.dto.ticketing;
 
-import com.smartcampus.entity.ticketing.TicketStatus;
+import com.smartcampus.entity.TicketStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

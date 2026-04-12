@@ -6,7 +6,7 @@ const Header = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const navigateTo = (path) => {
-    window.location.pathname = path;
+    window.location.assign(path);
   };
 
   const navigation = [

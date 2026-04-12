@@ -1,6 +1,6 @@
 package com.smartcampus.service.ticketing;
 
-import com.smartcampus.dto.CommentDTO;
+import com.smartcampus.dto.ticketing.CommentDTO;
 import com.smartcampus.entity.ticketing.Comment;
 import com.smartcampus.entity.ticketing.Ticket;
 import com.smartcampus.exception.ticketing.TicketNotFoundException;

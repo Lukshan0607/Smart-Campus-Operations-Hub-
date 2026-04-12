@@ -86,9 +86,7 @@ const ticketSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
-    resetTicketState: (state) => {
-      return initialState;
-    },
+    resetTicketState: () => initialState,
   },
 });
 

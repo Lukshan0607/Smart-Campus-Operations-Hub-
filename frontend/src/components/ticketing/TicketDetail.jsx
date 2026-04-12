@@ -5,7 +5,6 @@ import AttachmentUpload from './AttachmentUpload';
 
 const TicketDetail = ({ ticket, loading, onStatusUpdate, onAssignTechnician, isAdmin, isTechnician }) => {
   const [showStatusModal, setShowStatusModal] = useState(false);
-  const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(ticket?.status);
   const [resolutionNote, setResolutionNote] = useState('');
 
@@ -105,7 +104,7 @@ const TicketDetail = ({ ticket, loading, onStatusUpdate, onAssignTechnician, isA
           </button>
           {isAdmin && !ticket.assignedTechnicianId && (
             <button
-              onClick={() => setShowAssignModal(true)}
+              onClick={() => onAssignTechnician?.(ticket.id)}
               className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
             >
               Assign Technician

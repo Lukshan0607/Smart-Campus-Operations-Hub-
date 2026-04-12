@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from 'react-redux';
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import ticketApi from '../api/ticketApi';
 import {
   setTickets,
@@ -7,7 +7,6 @@ import {
   setSelectedTicket,
   updateTicketStatus,
   assignTechnicianToTicket,
-  setAttachments,
   addAttachments,
   setLoading,
   setError,

@@ -1,8 +1,8 @@
 package com.smartcampus.controller.ticketing;
 
-import com.smartcampus.dto.AttachmentDTO;
-import com.smartcampus.dto.TicketRequestDTO;
-import com.smartcampus.dto.TicketResponseDTO;
+import com.smartcampus.dto.ticketing.AttachmentDTO;
+import com.smartcampus.dto.ticketing.TicketRequestDTO;
+import com.smartcampus.dto.ticketing.TicketResponseDTO;
 import com.smartcampus.entity.TicketStatus;
 import com.smartcampus.service.ticketing.AttachmentService;
 import com.smartcampus.service.ticketing.TicketService;

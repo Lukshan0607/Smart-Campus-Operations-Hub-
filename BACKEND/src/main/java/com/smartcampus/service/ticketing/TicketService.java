@@ -1,7 +1,7 @@
 package com.smartcampus.service.ticketing;
 
-import com.smartcampus.dto.TicketRequestDTO;
-import com.smartcampus.dto.TicketResponseDTO;
+import com.smartcampus.dto.ticketing.TicketRequestDTO;
+import com.smartcampus.dto.ticketing.TicketResponseDTO;
 import com.smartcampus.entity.ticketing.Ticket;
 import com.smartcampus.entity.TicketStatus;
 import com.smartcampus.exception.ticketing.TicketNotFoundException;
