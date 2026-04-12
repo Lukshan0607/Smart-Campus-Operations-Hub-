@@ -3,7 +3,7 @@ package com.smartcampus.service.ticketing;
 import com.smartcampus.dto.ticketing.AttachmentDTO;
 import com.smartcampus.entity.ticketing.Attachment;
 import com.smartcampus.entity.ticketing.Ticket;
-import com.smartcampus.exception.TicketNotFoundException;
+import com.smartcampus.exception.ticketing.TicketNotFoundException;
 import com.smartcampus.repository.ticketing.AttachmentRepository;
 import com.smartcampus.repository.ticketing.TicketRepository;
 import lombok.RequiredArgsConstructor;

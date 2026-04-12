@@ -1,7 +1,7 @@
 package com.smartcampus.repository.ticketing;
 
 import com.smartcampus.entity.ticketing.Ticket;
-import com.smartcampus.entity.ticketing.TicketStatus;
+import com.smartcampus.entity.TicketStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
