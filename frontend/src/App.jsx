@@ -1,32 +1,24 @@
-import { useState, useEffect } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import Home from "./pages/Home";
 import Login from "./pages/login";
+import TicketsPage from "./pages/ticketing/TicketsPage";
+import TicketDetailPage from "./pages/ticketing/TicketDetailPage";
+import CreateTicketPage from "./pages/ticketing/CreateTicketPage";
 
 function App() {
-  const [currentPage, setCurrentPage] = useState('home');
+  return (
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/login" element={<Login />} />
 
-  useEffect(() => {
-    // Get current page from URL path
-    const path = window.location.pathname;
-    if (path === '/login') {
-      setCurrentPage('login');
-    } else {
-      setCurrentPage('home');
-    }
-  }, []);
+      {/* Module C - Maintenance & Incident Ticketing */}
+      <Route path="/tickets" element={<TicketsPage />} />
+      <Route path="/tickets/create" element={<CreateTicketPage />} />
+      <Route path="/tickets/:id" element={<TicketDetailPage />} />
 
-  const renderPage = () => {
-    switch(currentPage) {
-      case 'home':
-        return <Home />;
-      case 'login':
-        return <Login />;
-      default:
-        return <Home />;
-    }
-  };
-
-  return renderPage();
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }
 
 export default App;
