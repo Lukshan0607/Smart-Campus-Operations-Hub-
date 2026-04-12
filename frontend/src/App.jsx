@@ -2,10 +2,10 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import Home from './pages/Home';
 import Login from './pages/login';
-import ResourcesPage from './pages/user/ResourcesPage';
-import ResourceDetailPage from './pages/user/ResourceDetailPage';
-import BookResourcePage from './pages/user/BookResourcePage';
-import AdminDashboard from './pages/admin/AdminDashboard';
+import ResourcesPage from './pages/ResourcesPage';
+import ResourceDetailPage from './pages/ResourceDetailPage';
+import BookResourcePage from './pages/BookResourcePage';
+import AdminDashboard from './pages/AdminDashboard';
 
 export default function App() {
   return (

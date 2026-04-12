@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { FiArrowLeft } from 'react-icons/fi';
-import { fetchResourceById } from '../../api/resourcesApi';
-import { DEFAULT_USER_ID } from '../../constants/resources';
+import { fetchResourceById } from '../api/resourcesApi';
+import { DEFAULT_USER_ID } from '../constants/resources';
 
 /**
  * User-facing booking entry point: only the resource context + Book CTA area.

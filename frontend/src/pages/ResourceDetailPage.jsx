@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { FiArrowLeft, FiMapPin } from 'react-icons/fi';
-import { fetchResourceById } from '../../api/resourcesApi';
-import { DEFAULT_USER_ID, RESOURCE_TYPES } from '../../constants/resources';
+import { fetchResourceById } from '../api/resourcesApi';
+import { DEFAULT_USER_ID, RESOURCE_TYPES } from '../constants/resources';
 
 function typeLabel(value) {
   return RESOURCE_TYPES.find((t) => t.value === value)?.label || value;

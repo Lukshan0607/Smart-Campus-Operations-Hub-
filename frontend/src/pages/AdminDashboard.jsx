@@ -17,9 +17,9 @@ import {
   adminDeleteResource,
   adminUpdateResourceStatus,
   fetchAdminResourcesPage,
-} from '../../api/adminResourcesApi';
-import { createResource } from '../../api/resourcesApi';
-import { DEFAULT_USER_ID, RESOURCE_STATUSES, RESOURCE_TYPES } from '../../constants/resources';
+} from '../api/adminResourcesApi';
+import { createResource } from '../api/resourcesApi';
+import { DEFAULT_USER_ID, RESOURCE_STATUSES, RESOURCE_TYPES } from '../constants/resources';
 
 const PIE_COLORS = ['#4f46e5', '#0d9488', '#ea580c', '#64748b', '#ca8a04', '#9333ea', '#db2777'];
 
