@@ -23,7 +23,12 @@ export const useTickets = () => {
     dispatch(setLoading(true));
     try {
       const response = await ticketApi.listTickets();
-      dispatch(setTickets(response.data));
+      const payload = Array.isArray(response.data)
+        ? response.data
+        : Array.isArray(response.data?.content)
+          ? response.data.content
+          : [];
+      dispatch(setTickets(payload));
       dispatch(clearError());
     } catch (err) {
       dispatch(setError(err.response?.data?.message || 'Failed to fetch tickets'));

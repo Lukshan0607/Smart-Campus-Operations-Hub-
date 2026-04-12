@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTickets } from '../../hooks/useTickets';
-import TicketDetail from '../ticketing/TicketDetail';
+import TicketDetail from '../../components/ticketing/TicketDetail';
 
 const TicketDetailPage = () => {
   const { id } = useParams();

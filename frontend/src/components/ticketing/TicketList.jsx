@@ -2,6 +2,8 @@ import React from 'react';
 import TicketCard from './TicketCard';
 
 const TicketList = ({ tickets, loading, error }) => {
+  const safeTickets = Array.isArray(tickets) ? tickets : [];
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -18,7 +20,7 @@ const TicketList = ({ tickets, loading, error }) => {
     );
   }
 
-  if (!tickets || tickets.length === 0) {
+  if (safeTickets.length === 0) {
     return (
       <div className="text-center py-12 bg-gray-50 rounded-lg">
         <p className="text-gray-500 text-lg">No tickets found</p>
@@ -29,7 +31,7 @@ const TicketList = ({ tickets, loading, error }) => {
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {tickets.map((ticket) => (
+      {safeTickets.map((ticket) => (
         <TicketCard key={ticket.id} ticket={ticket} />
       ))}
     </div>

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useTickets } from '../../hooks/useTickets';
-import TicketList from '../ticketing/TicketList';
+import TicketList from '../../components/ticketing/TicketList';
 
 const TicketsPage = () => {
   const { tickets, loading, error, fetchTickets } = useTickets();

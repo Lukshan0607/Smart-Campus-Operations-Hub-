@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTickets } from '../../hooks/useTickets';
-import TicketForm from '../ticketing/TicketForm';
+import TicketForm from '../../components/ticketing/TicketForm';
 
 const CreateTicketPage = () => {
   const navigate = useNavigate();
