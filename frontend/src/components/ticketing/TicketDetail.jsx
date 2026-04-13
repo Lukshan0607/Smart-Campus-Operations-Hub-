@@ -69,9 +69,34 @@ const TicketDetail = ({ ticket, loading, onStatusUpdate, onAssignTechnician, isA
       </div>
 
       {/* Location & Contact */}
-      {(ticket.location || ticket.contactPhone) && (
+      {(ticket.location || ticket.contactPhone || ticket.locationCategory) && (
         <div className="mb-6 pb-6 border-b">
           <h2 className="text-lg font-bold text-gray-900 mb-3">Additional Info</h2>
+          {ticket.locationCategory && (
+            <p className="text-gray-700">
+              <span className="font-semibold">Building Name:</span> {formatLocationCategory(ticket.locationCategory)}
+            </p>
+          )}
+          {ticket.locationCategory !== 'OTHER' && ticket.floorNumber != null && (
+            <p className="text-gray-700">
+              <span className="font-semibold">Floor:</span> {ticket.floorNumber}
+            </p>
+          )}
+          {ticket.locationCategory !== 'OTHER' && ticket.block && (
+            <p className="text-gray-700">
+              <span className="font-semibold">Block:</span> {ticket.block}
+            </p>
+          )}
+          {ticket.locationCategory !== 'OTHER' && ticket.roomNumber && (
+            <p className="text-gray-700">
+              <span className="font-semibold">Room:</span> {ticket.roomNumber}
+            </p>
+          )}
+          {ticket.locationCategory === 'OTHER' && ticket.otherLocation && (
+            <p className="text-gray-700">
+              <span className="font-semibold">Where is it:</span> {ticket.otherLocation}
+            </p>
+          )}
           {ticket.location && (
             <p className="text-gray-700">
               <span className="font-semibold">Location:</span> {ticket.location}
@@ -172,6 +197,21 @@ const getPriorityColor = (priority) => {
       return 'text-green-600';
     default:
       return 'text-gray-600';
+  }
+};
+
+const formatLocationCategory = (category) => {
+  switch (category) {
+    case 'MAIN_BUILDING':
+      return 'Main Building';
+    case 'ENGINEERING_BUILDING':
+      return 'Engineering Building';
+    case 'BUSINESS_MANAGEMENT_BUILDING':
+      return 'Business Management Building';
+    case 'OTHER':
+      return 'Other';
+    default:
+      return category;
   }
 };
 

@@ -34,6 +34,23 @@ public class Ticket {
     @Column(nullable = false)
     private String priority;
 
+    @Column(nullable = false)
+    private String locationCategory;
+
+    @Column(length = 200)
+    private String buildingName;
+
+    private Integer floorNumber;
+
+    @Column(length = 20)
+    private String block;
+
+    @Column(length = 20)
+    private String roomNumber;
+
+    @Column(length = 255)
+    private String otherLocation;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TicketStatus status = TicketStatus.OPEN;
@@ -56,6 +73,9 @@ public class Ticket {
 
     @Column(columnDefinition = "TEXT")
     private String resolutionNote;
+
+    @Column(columnDefinition = "TEXT")
+    private String rejectionReason;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

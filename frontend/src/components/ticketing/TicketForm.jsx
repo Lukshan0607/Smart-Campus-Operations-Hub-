@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
 
+const LOCATION_OPTIONS = [
+  { value: 'MAIN_BUILDING', label: 'Main Building' },
+  { value: 'ENGINEERING_BUILDING', label: 'Engineering Building' },
+  { value: 'BUSINESS_MANAGEMENT_BUILDING', label: 'Business Management Building' },
+  { value: 'OTHER', label: 'Other' },
+];
+
+const FLOOR_OPTIONS = Array.from({ length: 10 }, (_, index) => String(index + 1));
+const BLOCK_OPTIONS = ['L', 'H'];
+
 const TicketForm = ({ onSubmit, loading = false, initialData = null }) => {
   const [formData, setFormData] = useState(
     initialData || {
@@ -7,7 +17,12 @@ const TicketForm = ({ onSubmit, loading = false, initialData = null }) => {
       description: '',
       category: 'MAINTENANCE',
       priority: 'MEDIUM',
-      location: '',
+      locationCategory: 'MAIN_BUILDING',
+      buildingName: 'Main Building',
+      floorNumber: '1',
+      block: 'L',
+      roomNumber: '',
+      otherLocation: '',
       contactPhone: '',
     }
   );
@@ -19,6 +34,9 @@ const TicketForm = ({ onSubmit, loading = false, initialData = null }) => {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+      ...(name === 'locationCategory'
+        ? { buildingName: LOCATION_OPTIONS.find((option) => option.value === value)?.label || value }
+        : {}),
     }));
     // Clear error for this field when user starts typing
     if (errors[name]) {
@@ -42,6 +60,24 @@ const TicketForm = ({ onSubmit, loading = false, initialData = null }) => {
     }
     if (!formData.priority) {
       newErrors.priority = 'Priority is required';
+    }
+    if (!formData.locationCategory) {
+      newErrors.locationCategory = 'Building name is required';
+    }
+    if (formData.locationCategory === 'OTHER') {
+      if (!formData.otherLocation.trim()) {
+        newErrors.otherLocation = 'Please specify where the issue is located';
+      }
+    } else {
+      if (!formData.floorNumber) {
+        newErrors.floorNumber = 'Floor is required';
+      }
+      if (!formData.block) {
+        newErrors.block = 'Block is required';
+      }
+      if (!formData.roomNumber.trim()) {
+        newErrors.roomNumber = 'Room number is required';
+      }
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -122,15 +158,120 @@ const TicketForm = ({ onSubmit, loading = false, initialData = null }) => {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label className="block text-sm font-semibold text-gray-900 mb-2">Building Name</label>
+          <select
+            name="locationCategory"
+            value={formData.locationCategory}
+            onChange={handleChange}
+            className={`w-full border rounded-lg px-3 py-2 ${
+              errors.locationCategory ? 'border-red-500' : 'border-gray-300'
+            }`}
+          >
+            {LOCATION_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {errors.locationCategory && (
+            <p className="text-red-600 text-sm mt-1">{errors.locationCategory}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-900 mb-2">Floor</label>
+          <select
+            name="floorNumber"
+            value={formData.floorNumber}
+            onChange={handleChange}
+            disabled={formData.locationCategory === 'OTHER'}
+            className={`w-full border rounded-lg px-3 py-2 ${
+              errors.floorNumber ? 'border-red-500' : 'border-gray-300'
+            } ${formData.locationCategory === 'OTHER' ? 'bg-gray-100 text-gray-400' : ''}`}
+          >
+            <option value="">Select floor</option>
+            {FLOOR_OPTIONS.map((floor) => (
+              <option key={floor} value={floor}>
+                {floor}
+              </option>
+            ))}
+          </select>
+          {errors.floorNumber && <p className="text-red-600 text-sm mt-1">{errors.floorNumber}</p>}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div>
+          <label className="block text-sm font-semibold text-gray-900 mb-2">Block</label>
+          <select
+            name="block"
+            value={formData.block}
+            onChange={handleChange}
+            disabled={formData.locationCategory === 'OTHER'}
+            className={`w-full border rounded-lg px-3 py-2 ${
+              errors.block ? 'border-red-500' : 'border-gray-300'
+            } ${formData.locationCategory === 'OTHER' ? 'bg-gray-100 text-gray-400' : ''}`}
+          >
+            <option value="">Select block</option>
+            {BLOCK_OPTIONS.map((block) => (
+              <option key={block} value={block}>
+                {block}
+              </option>
+            ))}
+          </select>
+          {errors.block && <p className="text-red-600 text-sm mt-1">{errors.block}</p>}
+        </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-900 mb-2">Room Number</label>
+          <input
+            type="text"
+            name="roomNumber"
+            value={formData.roomNumber}
+            onChange={handleChange}
+            disabled={formData.locationCategory === 'OTHER'}
+            className={`w-full border rounded-lg px-3 py-2 ${
+              errors.roomNumber ? 'border-red-500' : 'border-gray-300'
+            } ${formData.locationCategory === 'OTHER' ? 'bg-gray-100 text-gray-400' : ''}`}
+            placeholder="Room number"
+          />
+          {errors.roomNumber && <p className="text-red-600 text-sm mt-1">{errors.roomNumber}</p>}
+        </div>
+      </div>
+
+      {formData.locationCategory === 'OTHER' && (
+        <div className="mb-4">
+          <label className="block text-sm font-semibold text-gray-900 mb-2">Where is it?</label>
+          <input
+            type="text"
+            name="otherLocation"
+            value={formData.otherLocation}
+            onChange={handleChange}
+            className={`w-full border rounded-lg px-3 py-2 ${
+              errors.otherLocation ? 'border-red-500' : 'border-gray-300'
+            }`}
+            placeholder="Enter the exact location"
+          />
+          {errors.otherLocation && (
+            <p className="text-red-600 text-sm mt-1">{errors.otherLocation}</p>
+          )}
+        </div>
+      )}
+
       <div className="mb-4">
-        <label className="block text-sm font-semibold text-gray-900 mb-2">Location</label>
+        <label className="block text-sm font-semibold text-gray-900 mb-2">Location Summary</label>
         <input
           type="text"
-          name="location"
-          value={formData.location}
-          onChange={handleChange}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2"
-          placeholder="Building, Room, or Area"
+          value={
+            formData.locationCategory === 'OTHER'
+              ? formData.otherLocation
+              : `${formData.buildingName}, Floor ${formData.floorNumber}, Block ${formData.block}, Room ${formData.roomNumber}`
+          }
+          readOnly
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-600"
+          placeholder="Location summary"
         />
       </div>
 

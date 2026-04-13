@@ -26,7 +26,22 @@ public class TicketRequestDTO {
     @NotNull(message = "Priority is required")
     private String priority;
 
+    @NotBlank(message = "Location category is required")
+    private String locationCategory;
+
+    private String buildingName;
+
+    private Integer floorNumber;
+
+    private String block;
+
+    private String roomNumber;
+
+    private String otherLocation;
+
     private String location;
 
     private String contactPhone;
+
+    private String preferredContact;
 }
