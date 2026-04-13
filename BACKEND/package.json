@@ -3,9 +3,12 @@
   "private": true,
   "scripts": {
     "prebackend": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$conn=Get-NetTCPConnection -LocalPort 8083 -State Listen -ErrorAction SilentlyContinue; if($conn){$conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }}; exit 0\"",
-    "backend": "mvnw.cmd -q spring-boot:run",
+    "backend": "npm run backend:jar",
     "prebackend:verbose": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$conn=Get-NetTCPConnection -LocalPort 8083 -State Listen -ErrorAction SilentlyContinue; if($conn){$conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }}; exit 0\"",
-    "backend:verbose": "mvnw.cmd spring-boot:run",
+    "backend:verbose": "mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local",
+    "backend:jar": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"if(-not (Test-Path 'target/smartcampus-0.0.1-SNAPSHOT.jar')){ ./mvnw.cmd -DskipTests package }; java -jar target/smartcampus-0.0.1-SNAPSHOT.jar --spring.profiles.active=local\"",
+    "prebackend:mysql": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$conn=Get-NetTCPConnection -LocalPort 8083 -State Listen -ErrorAction SilentlyContinue; if($conn){$conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }}; exit 0\"",
+    "backend:mysql": "mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=mysql",
     "build": "mvnw.cmd -DskipTests package",
     "test": "mvnw.cmd test"
   }

@@ -59,7 +59,17 @@ const CommentSection = ({ ticketId }) => {
         </button>
       </form>
 
-      {error && <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-red-800">{error}</div>}
+      {error && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 text-amber-800 flex items-center justify-between gap-3">
+          <span>{error}</span>
+          <button
+            onClick={() => fetchComments(ticketId)}
+            className="px-3 py-1 rounded bg-amber-600 text-white text-sm hover:bg-amber-700"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Comments List */}
       {loading ? (

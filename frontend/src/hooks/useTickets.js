@@ -40,12 +40,19 @@ export const useTickets = () => {
   const fetchTicket = useCallback(
     async (id) => {
       dispatch(setLoading(true));
+      dispatch(setSelectedTicket(null));
       try {
         const response = await ticketApi.getTicket(id);
         dispatch(setSelectedTicket(response.data));
         dispatch(clearError());
       } catch (err) {
-        dispatch(setError(err.response?.data?.message || 'Failed to fetch ticket'));
+        if (err.response?.status === 404) {
+          dispatch(setError('Ticket not found'));
+        } else if (!err.response) {
+          dispatch(setError('Backend is not running (cannot connect to API)'));
+        } else {
+          dispatch(setError(err.response?.data?.message || 'Failed to fetch ticket'));
+        }
       } finally {
         dispatch(setLoading(false));
       }

@@ -33,6 +33,12 @@ const TicketCard = ({ ticket }) => {
           <p>Created by: {ticket.creatorName}</p>
           {ticket.assignedTechnicianName && <p>Assigned to: {ticket.assignedTechnicianName}</p>}
         </div>
+
+        <div className="mt-4">
+          <span className="inline-flex items-center text-sm font-semibold text-blue-700">
+            Open ticket →
+          </span>
+        </div>
       </div>
     </Link>
   );
