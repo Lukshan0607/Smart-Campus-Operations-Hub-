@@ -8,6 +8,8 @@ const authApi = {
       username,
       password,
     }),
+
+  getTechnicians: () => axios.get(`${API_BASE}/auth/technicians`),
 };
 
 export default authApi;

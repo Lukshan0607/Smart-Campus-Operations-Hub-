@@ -2,16 +2,20 @@ package com.smartcampus.controller;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
+    private static final List<UserSummary> DEMO_TECHNICIANS = List.of(
+        new UserSummary(2L, "technician1", "TECHNICIAN", "Technician One"),
+        new UserSummary(3L, "tech-support", "TECHNICIAN", "Tech Support")
+    );
 
     /**
      * Simple login endpoint for demo/testing
@@ -32,8 +36,13 @@ public class AuthController {
             token,
             request.username,
             role,
-            1L // demo userId
+            resolveUserId(request.username)
         ));
+    }
+
+    @GetMapping("/technicians")
+    public ResponseEntity<List<UserSummary>> technicians() {
+        return ResponseEntity.ok(DEMO_TECHNICIANS);
     }
 
     private String detectRole(String username) {
@@ -41,6 +50,14 @@ public class AuthController {
         if (username.contains("tech")) return "TECHNICIAN";
         if (username.contains("lecturer")) return "LECTURER";
         return "STUDENT";
+    }
+
+    private Long resolveUserId(String username) {
+        if ("admin".equalsIgnoreCase(username)) return 99L;
+        if ("technician1".equalsIgnoreCase(username)) return 2L;
+        if ("tech-support".equalsIgnoreCase(username)) return 3L;
+        if ("lecturer1".equalsIgnoreCase(username)) return 10L;
+        return 1L;
     }
 
     @Data
@@ -53,8 +70,18 @@ public class AuthController {
     }
 
     @Data
+    @NoArgsConstructor
     public static class LoginRequest {
         public String username;
         public String password;
+    }
+
+    @Data
+    @AllArgsConstructor
+    public static class UserSummary {
+        private Long id;
+        private String username;
+        private String role;
+        private String displayName;
     }
 }

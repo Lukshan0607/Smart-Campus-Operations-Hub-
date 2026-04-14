@@ -1,8 +1,11 @@
 import React, { useEffect } from 'react';
 import ticketApi from '../../api/ticketApi';
+import authApi from '../../api/authApi';
 
 const AdminDashboard = () => {
   const [tickets, setTickets] = React.useState([]);
+  const [technicians, setTechnicians] = React.useState([]);
+  const [selectedTechByTicket, setSelectedTechByTicket] = React.useState({});
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState('');
 
@@ -21,11 +24,25 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     load();
+
+    const loadTechnicians = async () => {
+      try {
+        const res = await authApi.getTechnicians();
+        setTechnicians(Array.isArray(res.data) ? res.data : []);
+      } catch {
+        setTechnicians([]);
+      }
+    };
+
+    loadTechnicians();
   }, []);
 
   const assign = async (ticketId) => {
-    const technicianId = window.prompt('Technician ID (e.g. 2)');
-    if (!technicianId) return;
+    const technicianId = selectedTechByTicket[ticketId];
+    if (!technicianId) {
+      setError('Please select a technician first');
+      return;
+    }
     await ticketApi.assignTechnician(ticketId, Number(technicianId));
     load();
   };
@@ -51,6 +68,23 @@ const AdminDashboard = () => {
             </div>
             <p className="text-sm text-gray-600 mt-1">{t.description}</p>
             <div className="flex gap-2 mt-3">
+              <select
+                value={selectedTechByTicket[t.id] || ''}
+                onChange={(e) =>
+                  setSelectedTechByTicket((prev) => ({
+                    ...prev,
+                    [t.id]: e.target.value,
+                  }))
+                }
+                className="border rounded px-2 py-1.5 text-sm min-w-44"
+              >
+                <option value="">Select technician</option>
+                {technicians.map((tech) => (
+                  <option key={tech.id} value={tech.id}>
+                    {tech.displayName || tech.username} (#{tech.id})
+                  </option>
+                ))}
+              </select>
               <button onClick={() => assign(t.id)} className="px-3 py-1.5 rounded bg-blue-600 text-white">Assign</button>
               <button onClick={() => reject(t.id)} className="px-3 py-1.5 rounded bg-red-600 text-white">Reject</button>
             </div>
