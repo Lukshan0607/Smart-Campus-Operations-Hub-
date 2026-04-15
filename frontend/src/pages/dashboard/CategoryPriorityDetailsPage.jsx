@@ -10,6 +10,7 @@ const CategoryPriorityDetailsPage = () => {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [timeDuration, setTimeDuration] = useState('WEEK');
 
   useEffect(() => {
     const load = async () => {
@@ -28,20 +29,72 @@ const CategoryPriorityDetailsPage = () => {
     load();
   }, []);
 
+  const isWithinCurrentWeek = (dateValue) => {
+    if (!dateValue) return false;
+    const d = new Date(dateValue);
+    if (Number.isNaN(d.getTime())) return false;
+
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const day = start.getDay();
+    const diff = day === 0 ? 6 : day - 1;
+    start.setDate(start.getDate() - diff);
+
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+
+    return d >= start && d < end;
+  };
+
+  const isWithinCurrentMonth = (dateValue) => {
+    if (!dateValue) return false;
+    const d = new Date(dateValue);
+    if (Number.isNaN(d.getTime())) return false;
+
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  };
+
+  const isWithinCurrentYear = (dateValue) => {
+    if (!dateValue) return false;
+    const d = new Date(dateValue);
+    if (Number.isNaN(d.getTime())) return false;
+
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear();
+  };
+
+  const filteredTickets = useMemo(() => {
+    if (timeDuration === 'MONTH') {
+      return tickets.filter((t) => isWithinCurrentMonth(t.createdAt));
+    }
+    if (timeDuration === 'YEAR') {
+      return tickets.filter((t) => isWithinCurrentYear(t.createdAt));
+    }
+    return tickets.filter((t) => isWithinCurrentWeek(t.createdAt));
+  }, [tickets, timeDuration]);
+
+  const durationLabel = timeDuration === 'MONTH'
+    ? 'This Month'
+    : timeDuration === 'YEAR'
+      ? 'This Year'
+      : 'This Week';
+
   const categoryStats = useMemo(() => {
     const map = {};
-    tickets.forEach((t) => {
+    filteredTickets.forEach((t) => {
       const key = formatCategoryDisplay(t.category, t.subCategory);
       map[key] = (map[key] || 0) + 1;
     });
     return Object.entries(map)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count);
-  }, [tickets]);
+  }, [filteredTickets]);
 
   const priorityStats = useMemo(() => {
     const map = {};
-    tickets.forEach((t) => {
+    filteredTickets.forEach((t) => {
       const key = t.priority || 'MEDIUM';
       map[key] = (map[key] || 0) + 1;
     });
@@ -56,24 +109,24 @@ const CategoryPriorityDetailsPage = () => {
         if (ib === -1) return -1;
         return ia - ib;
       });
-  }, [tickets]);
+  }, [filteredTickets]);
 
   const matrix = useMemo(() => {
     const grouped = {};
-    tickets.forEach((t) => {
+    filteredTickets.forEach((t) => {
       const category = formatCategoryDisplay(t.category, t.subCategory);
       const priority = t.priority || 'MEDIUM';
       if (!grouped[category]) grouped[category] = {};
       grouped[category][priority] = (grouped[category][priority] || 0) + 1;
     });
     return grouped;
-  }, [tickets]);
+  }, [filteredTickets]);
 
   const matrixCategories = Object.keys(matrix).sort();
   const matrixPriorities = Array.from(
     new Set([
       ...PRIORITY_ORDER,
-      ...tickets.map((t) => t.priority).filter(Boolean),
+      ...filteredTickets.map((t) => t.priority).filter(Boolean),
     ])
   );
 
@@ -82,14 +135,37 @@ const CategoryPriorityDetailsPage = () => {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-3xl font-bold">Category & Priority Details</h1>
-          <p className="text-sm text-gray-500 mt-1">Detailed breakdown for ticket categories and priority levels</p>
+          <p className="text-sm text-gray-500 mt-1">Detailed breakdown for ticket categories and priority levels ({durationLabel})</p>
         </div>
-        <button
-          onClick={() => navigate('/admin/tickets')}
-          className="px-4 py-2 rounded-lg border bg-white text-gray-700 hover:bg-gray-50"
-        >
-          ← Back to Admin Dashboard
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex rounded-lg border overflow-hidden w-fit">
+            <button
+              onClick={() => setTimeDuration('WEEK')}
+              className={`px-4 py-2 text-sm font-semibold ${timeDuration === 'WEEK' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+            >
+              Weekly
+            </button>
+            <button
+              onClick={() => setTimeDuration('MONTH')}
+              className={`px-4 py-2 text-sm font-semibold border-l ${timeDuration === 'MONTH' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setTimeDuration('YEAR')}
+              className={`px-4 py-2 text-sm font-semibold border-l ${timeDuration === 'YEAR' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+            >
+              Yearly
+            </button>
+          </div>
+
+          <button
+            onClick={() => navigate('/admin/tickets')}
+            className="px-4 py-2 rounded-lg border bg-white text-gray-700 hover:bg-gray-50"
+          >
+            ← Back to Admin Dashboard
+          </button>
+        </div>
       </div>
 
       {loading && <p className="text-gray-600">Loading...</p>}
@@ -98,9 +174,9 @@ const CategoryPriorityDetailsPage = () => {
       {!loading && !error && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <SummaryCard title="Total Tickets" value={tickets.length} subtitle="All tickets" />
-            <SummaryCard title="Categories" value={categoryStats.length} subtitle="Distinct categories" />
-            <SummaryCard title="Priority Levels" value={priorityStats.length} subtitle="Distinct priorities" />
+            <SummaryCard title="Total Tickets" value={filteredTickets.length} subtitle={durationLabel} />
+            <SummaryCard title="Categories" value={categoryStats.length} subtitle={`Distinct categories (${durationLabel})`} />
+            <SummaryCard title="Priority Levels" value={priorityStats.length} subtitle={`Distinct priorities (${durationLabel})`} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
