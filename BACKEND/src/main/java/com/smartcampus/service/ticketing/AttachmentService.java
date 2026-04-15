@@ -68,14 +68,26 @@ public class AttachmentService {
         }
     }
 
-    public void deleteAttachment(Long attachmentId, String username) {
+    public void deleteAttachment(Long ticketId, Long attachmentId, String username) {
         Attachment attachment = attachmentRepository.findById(attachmentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Attachment not found with id: " + attachmentId));
 
+        if (attachment.getTicket() == null || !attachment.getTicket().getId().equals(ticketId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Attachment not found for ticket id: " + ticketId);
+        }
+
         // Check authorization
         Long userId = extractUserIdFromContext();
-        if (!attachment.getUploadedById().equals(userId)) {
+        boolean isOwner = attachment.getUploadedById() != null && attachment.getUploadedById().equals(userId);
+        if (!isOwner) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own attachments");
+        }
+
+        try {
+            Path filePath = Paths.get(attachment.getFileUrl().startsWith("/") ? attachment.getFileUrl().substring(1) : attachment.getFileUrl());
+            Files.deleteIfExists(filePath);
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete attachment file: " + e.getMessage());
         }
 
         attachmentRepository.deleteById(attachmentId);
@@ -103,6 +115,46 @@ public class AttachmentService {
     }
 
     private Long extractUserIdFromContext() {
+        var attributes = org.springframework.web.context.request.RequestContextHolder.getRequestAttributes();
+        if (attributes instanceof org.springframework.web.context.request.ServletRequestAttributes servletRequestAttributes) {
+            String userIdHeader = servletRequestAttributes.getRequest().getHeader("X-User-Id");
+            if (userIdHeader != null && !userIdHeader.isBlank()) {
+                try {
+                    return Long.parseLong(userIdHeader.trim());
+                } catch (NumberFormatException ignored) {
+                }
+            }
+
+            String usernameHeader = servletRequestAttributes.getRequest().getHeader("X-Username");
+            Long resolvedFromHeader = resolveDemoUserId(usernameHeader);
+            if (resolvedFromHeader != null) {
+                return resolvedFromHeader;
+            }
+        }
+
+        var authentication = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getName() != null) {
+            Long resolvedFromAuth = resolveDemoUserId(authentication.getName());
+            if (resolvedFromAuth != null) {
+                return resolvedFromAuth;
+            }
+        }
+
         return 1L;
+    }
+
+    private Long resolveDemoUserId(String username) {
+        if (username == null || username.isBlank()) {
+            return null;
+        }
+
+        String normalized = username.trim().toLowerCase();
+        return switch (normalized) {
+            case "admin" -> 99L;
+            case "technician1" -> 2L;
+            case "tech-support" -> 3L;
+            case "lecturer1" -> 10L;
+            default -> null;
+        };
     }
 }

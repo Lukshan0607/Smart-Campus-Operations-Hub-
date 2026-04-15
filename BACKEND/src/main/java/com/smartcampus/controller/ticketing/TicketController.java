@@ -37,6 +37,15 @@ public class TicketController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<TicketResponseDTO> updateTicket(@PathVariable Long id,
+                                                          @Valid @RequestBody TicketRequestDTO request,
+                                                          Principal principal) {
+        String username = principal != null ? principal.getName() : "demo-user";
+        TicketResponseDTO updated = ticketService.updateTicket(id, request, username);
+        return ResponseEntity.ok(updated);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<TicketResponseDTO> getTicket(@PathVariable Long id, Principal principal) {
         String username = principal != null ? principal.getName() : "demo-user";
@@ -150,7 +159,7 @@ public class TicketController {
                                             @PathVariable Long imageId,
                                             Principal principal) {
         String username = principal != null ? principal.getName() : "demo-user";
-        attachmentService.deleteAttachment(imageId, username);
+        attachmentService.deleteAttachment(id, imageId, username);
         return ResponseEntity.noContent().build();
     }
 

@@ -3,7 +3,17 @@ import StatusBadge from './StatusBadge';
 import CommentSection from './CommentSection';
 import AttachmentUpload from './AttachmentUpload';
 
-const TicketDetail = ({ ticket, loading, onStatusUpdate, onAssignTechnician, isAdmin, isTechnician }) => {
+const TicketDetail = ({
+  ticket,
+  loading,
+  onStatusUpdate,
+  onAssignTechnician,
+  isAdmin,
+  isTechnician,
+  canEdit,
+  onEditTicket,
+  onAttachmentsChanged,
+}) => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(ticket?.status);
   const [resolutionNote, setResolutionNote] = useState('');
@@ -138,8 +148,19 @@ const TicketDetail = ({ ticket, loading, onStatusUpdate, onAssignTechnician, isA
         </div>
       )}
 
+      {canEdit && (
+        <div className="mb-6 pb-6 border-b flex gap-3">
+          <button
+            onClick={onEditTicket}
+            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition"
+          >
+            Edit Ticket
+          </button>
+        </div>
+      )}
+
       {/* Attachments */}
-      <AttachmentUpload ticketId={ticket.id} attachments={ticket.attachments || []} />
+      <AttachmentUpload ticketId={ticket.id} attachments={ticket.attachments || []} onChange={onAttachmentsChanged} />
 
       {/* Comments */}
       <CommentSection ticketId={ticket.id} />

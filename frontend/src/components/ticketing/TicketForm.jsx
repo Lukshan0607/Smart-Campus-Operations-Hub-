@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const LOCATION_OPTIONS = [
   { value: 'MAIN_BUILDING', label: 'Main Building' },
@@ -10,24 +10,36 @@ const LOCATION_OPTIONS = [
 const FLOOR_OPTIONS = Array.from({ length: 10 }, (_, index) => String(index + 1));
 const BLOCK_OPTIONS = ['L', 'H'];
 
-const TicketForm = ({ onSubmit, loading = false, initialData = null }) => {
+const getDefaultFormData = () => ({
+  title: '',
+  description: '',
+  category: 'MAINTENANCE',
+  priority: 'MEDIUM',
+  locationCategory: 'MAIN_BUILDING',
+  buildingName: 'Main Building',
+  floorNumber: '1',
+  block: 'L',
+  roomNumber: '',
+  otherLocation: '',
+  contactPhone: '',
+});
+
+const TicketForm = ({ onSubmit, loading = false, initialData = null, submitLabel = 'Create Ticket' }) => {
   const [formData, setFormData] = useState(
-    initialData || {
-      title: '',
-      description: '',
-      category: 'MAINTENANCE',
-      priority: 'MEDIUM',
-      locationCategory: 'MAIN_BUILDING',
-      buildingName: 'Main Building',
-      floorNumber: '1',
-      block: 'L',
-      roomNumber: '',
-      otherLocation: '',
-      contactPhone: '',
-    }
+    initialData || getDefaultFormData()
   );
 
   const [errors, setErrors] = useState({});
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        ...getDefaultFormData(),
+        ...initialData,
+        floorNumber: initialData.floorNumber != null ? String(initialData.floorNumber) : '',
+      });
+    }
+  }, [initialData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -292,7 +304,7 @@ const TicketForm = ({ onSubmit, loading = false, initialData = null }) => {
         disabled={loading}
         className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 transition"
       >
-        {loading ? 'Creating...' : 'Create Ticket'}
+        {loading ? 'Saving...' : submitLabel}
       </button>
     </form>
   );

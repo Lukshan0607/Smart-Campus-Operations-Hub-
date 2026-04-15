@@ -53,6 +53,40 @@ public class TicketService {
         return mapToDTO(saved);
     }
 
+    public TicketResponseDTO updateTicket(Long id, TicketRequestDTO request, String username) {
+        Ticket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + id));
+
+        Long currentUserId = extractUserIdFromContext();
+        boolean isAdmin = hasRole("ADMIN");
+        boolean isOwner = ticket.getCreatorId() != null && ticket.getCreatorId().equals(currentUserId);
+
+        if (!isAdmin && !isOwner) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only edit your own ticket");
+        }
+
+        validateLocation(request);
+
+        ticket.setTitle(request.getTitle());
+        ticket.setDescription(request.getDescription());
+        ticket.setCategory(request.getCategory());
+        ticket.setPriority(request.getPriority());
+        ticket.setLocationCategory(request.getLocationCategory());
+        ticket.setBuildingName(request.getBuildingName());
+        ticket.setFloorNumber(request.getFloorNumber());
+        ticket.setBlock(request.getBlock());
+        ticket.setRoomNumber(request.getRoomNumber());
+        ticket.setOtherLocation(request.getOtherLocation());
+        ticket.setLocation(buildLocationSummary(request));
+        ticket.setContactPhone(request.getPreferredContact() != null ? request.getPreferredContact() : request.getContactPhone());
+
+        Ticket updated = ticketRepository.save(ticket);
+        notificationService.create(updated.getCreatorId(), updated.getCreatorName(),
+                "Ticket updated", "Ticket #" + updated.getId() + " was updated by " + username + ".");
+
+        return mapToDTO(updated);
+    }
+
     public TicketResponseDTO getTicketById(Long id, String username) {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + id));

@@ -26,6 +26,12 @@ const ticketApi = {
     return axios.post(`${API_BASE}/tickets`, ticketData);
   },
 
+  // 1b) PUT /api/tickets/{id}
+  updateTicket: (id, ticketData) => {
+    applyAuthHeader();
+    return axios.put(`${API_BASE}/tickets/${id}`, ticketData);
+  },
+
   // 2) GET /api/tickets/{id}
   getTicketById: (id) => {
     applyAuthHeader();
@@ -89,6 +95,12 @@ const ticketApi = {
     return axios.post(`${API_BASE}/tickets/${id}/attachments`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
+  },
+
+  // DELETE /api/tickets/{id}/images/{imageId}
+  deleteImage: (ticketId, imageId) => {
+    applyAuthHeader();
+    return axios.delete(`${API_BASE}/tickets/${ticketId}/images/${imageId}`);
   },
 
   // 5) POST /api/tickets/{id}/comments
