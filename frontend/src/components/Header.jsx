@@ -15,7 +15,7 @@ const Header = () => {
   }, []);
 
   const navigateTo = (path) => {
-    window.location.pathname = path;
+    window.location.assign(path);
   };
 
   const handleLogout = () => {

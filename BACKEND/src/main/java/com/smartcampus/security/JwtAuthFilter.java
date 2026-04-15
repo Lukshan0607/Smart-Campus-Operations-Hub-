@@ -19,7 +19,7 @@ import jakarta.servlet.http.*;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    @Value("${app.jwt.secret}")
+    @Value("${app.jwt.secret:change_me_to_a_long_random_secret}")
     private String jwtSecret;
 
     @Override
