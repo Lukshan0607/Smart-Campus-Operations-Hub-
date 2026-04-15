@@ -25,6 +25,7 @@ public class TicketService {
 
     private final TicketRepository ticketRepository;
     private final NotificationService notificationService;
+    private final AttachmentService attachmentService;
 
     public TicketResponseDTO createTicket(TicketRequestDTO request, String username) {
         validateLocation(request);
@@ -201,6 +202,7 @@ public class TicketService {
         dto.setCreatedAt(ticket.getCreatedAt());
         dto.setUpdatedAt(ticket.getUpdatedAt());
         dto.setClosedAt(ticket.getClosedAt());
+        dto.setAttachments(attachmentService.getAttachmentsByTicket(ticket.getId()));
         return dto;
     }
 

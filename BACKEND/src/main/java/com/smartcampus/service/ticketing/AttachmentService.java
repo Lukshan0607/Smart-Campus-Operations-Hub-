@@ -13,6 +13,9 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -45,15 +48,14 @@ public class AttachmentService {
     private Attachment saveAttachment(MultipartFile file, Ticket ticket, String username) {
         try {
             String filename = System.currentTimeMillis() + "_" + file.getOriginalFilename();
-            String fileUrl = UPLOAD_DIR + ticket.getId() + "/" + filename;
-
-            // In a real scenario, save to cloud storage or local file system
-            // byte[] bytes = file.getBytes();
-            // Files.write(Paths.get(fileUrl), bytes);
+            String relativeUrl = "/" + UPLOAD_DIR + ticket.getId() + "/" + filename;
+            Path targetDir = Paths.get(UPLOAD_DIR, String.valueOf(ticket.getId()));
+            Files.createDirectories(targetDir);
+            Files.write(targetDir.resolve(filename), file.getBytes());
 
             Attachment attachment = new Attachment();
             attachment.setFilename(filename);
-            attachment.setFileUrl(fileUrl);
+            attachment.setFileUrl(relativeUrl);
             attachment.setContentType(file.getContentType());
             attachment.setFileSize(file.getSize());
             attachment.setUploadedById(extractUserIdFromContext());
