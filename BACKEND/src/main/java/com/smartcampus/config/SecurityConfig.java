@@ -12,26 +12,54 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.smartcampus.security.JwtAuthFilter;
+import com.smartcampus.security.OAuthSuccessHandler;
 
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            JwtAuthFilter jwtAuthFilter,
+            OAuthSuccessHandler oAuthSuccessHandler) throws Exception {
+
         http
             .csrf(csrf -> csrf.disable())
             .cors(Customizer.withDefaults())
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+            // OAuth needs session
+            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
-                    "/v3/api-docs/**",
-                    "/swagger-ui/**",
-                    "/swagger-ui.html"
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/swagger-ui.html",
+                        "/oauth2/**",
+                        "/login/**",
+                        "/auth/**",
+                        "/auth/signup"
                 ).permitAll()
+
                 .requestMatchers("/api/resources/**").permitAll()
+
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
                 .anyRequest().authenticated()
             )
+
+            .formLogin(form -> form
+                .loginPage("/login")
+                .permitAll()
+            )
+
+            // Google OAuth login
+            .oauth2Login(oauth -> oauth
+                .successHandler(oAuthSuccessHandler)
+            )
+
+            // JWT filter
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -42,4 +70,3 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 }
-
