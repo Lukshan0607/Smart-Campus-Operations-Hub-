@@ -4,6 +4,7 @@ import ticketApi from '../api/ticketApi';
 import {
   setTickets,
   addTicket,
+  removeTicket,
   updateTicketDetails,
   setSelectedTicket,
   updateTicketStatus,
@@ -98,6 +99,23 @@ export const useTickets = () => {
     [dispatch]
   );
 
+  const deleteTicket = useCallback(
+    async (id) => {
+      dispatch(setLoading(true));
+      try {
+        await ticketApi.deleteTicket(id);
+        dispatch(removeTicket(id));
+        dispatch(clearError());
+      } catch (err) {
+        dispatch(setError(err.response?.data?.message || 'Failed to delete ticket'));
+        throw err;
+      } finally {
+        dispatch(setLoading(false));
+      }
+    },
+    [dispatch]
+  );
+
   const updateStatus = useCallback(
     async (id, status, resolutionNote) => {
       dispatch(setLoading(true));
@@ -181,6 +199,7 @@ export const useTickets = () => {
     fetchTicket,
     createTicket,
     updateTicket,
+    deleteTicket,
     updateStatus,
     assignTechnician,
     uploadAttachments,

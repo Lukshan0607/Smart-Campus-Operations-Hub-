@@ -53,6 +53,13 @@ public class TicketController {
         return ResponseEntity.ok(dto);
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTicket(@PathVariable Long id, Principal principal) {
+        String username = principal != null ? principal.getName() : "demo-user";
+        ticketService.deleteTicket(id, username);
+        return ResponseEntity.noContent().build();
+    }
+
     @PatchMapping("/{id}/status")
     public ResponseEntity<TicketResponseDTO> updateStatus(@PathVariable Long id,
                                                           @Valid @RequestBody StatusUpdateRequest request,

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ticketApi from '../../api/ticketApi';
 import authApi from '../../api/authApi';
+import { formatCategoryDisplay } from '../../utils/ticketCategories';
 
 const AssignTechniciansPage = () => {
   const navigate = useNavigate();
@@ -155,7 +156,7 @@ const AssignTechniciansPage = () => {
                     <p className="text-gray-700 mb-2">{ticket.title}</p>
                     <p className="text-sm text-gray-600">{ticket.description}</p>
                     <div className="mt-3 flex gap-4 text-sm text-gray-600">
-                      <span><strong>Category:</strong> {ticket.category}</span>
+                      <span><strong>Category:</strong> {formatCategoryDisplay(ticket.category, ticket.subCategory)}</span>
                       <span><strong>Priority:</strong> {ticket.priority}</span>
                     </div>
                     <div className="mt-2 text-sm text-gray-600">

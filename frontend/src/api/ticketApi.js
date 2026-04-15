@@ -32,6 +32,12 @@ const ticketApi = {
     return axios.put(`${API_BASE}/tickets/${id}`, ticketData);
   },
 
+  // DELETE /api/tickets/{id}
+  deleteTicket: (id) => {
+    applyAuthHeader();
+    return axios.delete(`${API_BASE}/tickets/${id}`);
+  },
+
   // 2) GET /api/tickets/{id}
   getTicketById: (id) => {
     applyAuthHeader();

@@ -93,6 +93,19 @@ public class AttachmentService {
         attachmentRepository.deleteById(attachmentId);
     }
 
+    public void deleteAttachmentsByTicketId(Long ticketId) {
+        List<Attachment> attachments = attachmentRepository.findByTicketId(ticketId);
+        for (Attachment attachment : attachments) {
+            try {
+                Path filePath = Paths.get(attachment.getFileUrl().startsWith("/") ? attachment.getFileUrl().substring(1) : attachment.getFileUrl());
+                Files.deleteIfExists(filePath);
+            } catch (IOException e) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete attachment file: " + e.getMessage());
+            }
+        }
+        attachmentRepository.deleteAll(attachments);
+    }
+
     public List<AttachmentDTO> getAttachmentsByTicket(Long ticketId) {
         return attachmentRepository.findByTicketId(ticketId)
                 .stream()

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ticketApi from '../../api/ticketApi';
 import authApi from '../../api/authApi';
+import { formatCategoryDisplay } from '../../utils/ticketCategories';
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
@@ -825,7 +826,7 @@ const TicketCard = ({
         <div className="border-t p-4 space-y-4 bg-gray-50">
           {/* Basic Information Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-            <Info label="Category" value={ticket.category} />
+            <Info label="Category" value={formatCategoryDisplay(ticket.category, ticket.subCategory)} />
             <Info label="Priority" value={ticket.priority} />
             <Info label="Created By" value={`${ticket.creatorName || '-'} (${ticket.creatorId || '-'})`} />
             <Info label="Assigned To" value={ticket.assignedTechnicianName || 'Unassigned'} />

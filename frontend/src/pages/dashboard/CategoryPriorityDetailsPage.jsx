@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ticketApi from '../../api/ticketApi';
+import { formatCategoryDisplay } from '../../utils/ticketCategories';
 
 const PRIORITY_ORDER = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 
@@ -30,7 +31,7 @@ const CategoryPriorityDetailsPage = () => {
   const categoryStats = useMemo(() => {
     const map = {};
     tickets.forEach((t) => {
-      const key = t.category || 'Unknown';
+      const key = formatCategoryDisplay(t.category, t.subCategory);
       map[key] = (map[key] || 0) + 1;
     });
     return Object.entries(map)
@@ -60,7 +61,7 @@ const CategoryPriorityDetailsPage = () => {
   const matrix = useMemo(() => {
     const grouped = {};
     tickets.forEach((t) => {
-      const category = t.category || 'Unknown';
+      const category = formatCategoryDisplay(t.category, t.subCategory);
       const priority = t.priority || 'MEDIUM';
       if (!grouped[category]) grouped[category] = {};
       grouped[category][priority] = (grouped[category][priority] || 0) + 1;

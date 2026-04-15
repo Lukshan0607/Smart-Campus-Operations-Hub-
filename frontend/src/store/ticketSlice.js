@@ -20,6 +20,13 @@ const ticketSlice = createSlice({
     addTicket: (state, action) => {
       state.tickets.push(action.payload);
     },
+    removeTicket: (state, action) => {
+      const ticketId = action.payload;
+      state.tickets = state.tickets.filter((ticket) => ticket.id !== ticketId);
+      if (state.selectedTicket?.id === ticketId) {
+        state.selectedTicket = null;
+      }
+    },
     updateTicketDetails: (state, action) => {
       const updatedTicket = action.payload;
       const index = state.tickets.findIndex((t) => t.id === updatedTicket.id);
@@ -103,6 +110,7 @@ const ticketSlice = createSlice({
 export const {
   setTickets,
   addTicket,
+  removeTicket,
   updateTicketDetails,
   setSelectedTicket,
   updateTicketStatus,

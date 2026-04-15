@@ -31,11 +31,13 @@ public class TicketService {
 
     public TicketResponseDTO createTicket(TicketRequestDTO request, String username) {
         validateLocation(request);
+        validateCategoryStructure(request);
 
         Ticket ticket = new Ticket();
         ticket.setTitle(request.getTitle());
         ticket.setDescription(request.getDescription());
         ticket.setCategory(request.getCategory());
+        ticket.setSubCategory(request.getSubCategory());
         ticket.setPriority(request.getPriority());
         ticket.setLocationCategory(request.getLocationCategory());
         ticket.setBuildingName(request.getBuildingName());
@@ -65,11 +67,17 @@ public class TicketService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only edit your own ticket");
         }
 
+        if (!isAdmin && ticket.getStatus() != TicketStatus.OPEN) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You cannot edit this ticket because it is already in progress or beyond");
+        }
+
         validateLocation(request);
+        validateCategoryStructure(request);
 
         ticket.setTitle(request.getTitle());
         ticket.setDescription(request.getDescription());
         ticket.setCategory(request.getCategory());
+        ticket.setSubCategory(request.getSubCategory());
         ticket.setPriority(request.getPriority());
         ticket.setLocationCategory(request.getLocationCategory());
         ticket.setBuildingName(request.getBuildingName());
@@ -85,6 +93,40 @@ public class TicketService {
                 "Ticket updated", "Ticket #" + updated.getId() + " was updated by " + username + ".");
 
         return mapToDTO(updated);
+    }
+
+    public void deleteTicket(Long id, String username) {
+        Ticket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + id));
+
+        Long currentUserId = extractUserIdFromContext();
+        boolean isAdmin = hasRole("ADMIN");
+        boolean isOwner = ticket.getCreatorId() != null && ticket.getCreatorId().equals(currentUserId);
+
+        if (!isAdmin && !isOwner) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own ticket");
+        }
+
+        Long creatorId = ticket.getCreatorId();
+        String creatorName = ticket.getCreatorName();
+        Long technicianId = ticket.getAssignedTechnicianId();
+        String technicianName = ticket.getAssignedTechnicianName();
+
+        attachmentService.deleteAttachmentsByTicketId(id);
+        ticketRepository.delete(ticket);
+
+        if (creatorId != null) {
+            notificationService.create(creatorId, creatorName != null ? creatorName : "user",
+                    "Ticket deleted", "Ticket #" + id + " was deleted by " + username + ".");
+        }
+
+        if (technicianId != null) {
+            notificationService.create(technicianId, technicianName != null ? technicianName : "technician",
+                    "Ticket deleted", "Ticket #" + id + " was deleted by " + username + ".");
+        }
+
+        notificationService.create(999L, "admin",
+                "Ticket deleted", "Ticket #" + id + " was deleted by " + username + ".");
     }
 
     public TicketResponseDTO getTicketById(Long id, String username) {
@@ -244,6 +286,7 @@ public class TicketService {
         dto.setTitle(ticket.getTitle());
         dto.setDescription(ticket.getDescription());
         dto.setCategory(ticket.getCategory());
+        dto.setSubCategory(ticket.getSubCategory());
         dto.setPriority(ticket.getPriority());
         dto.setStatus(ticket.getStatus());
         dto.setLocation(ticket.getLocation());
@@ -352,6 +395,49 @@ public class TicketService {
         if (request.getRoomNumber() == null || request.getRoomNumber().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Room number is required");
         }
+    }
+
+    private void validateCategoryStructure(TicketRequestDTO request) {
+        String category = request.getCategory();
+        String subCategory = request.getSubCategory();
+
+        if (category == null || category.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category is required");
+        }
+        if (subCategory == null || subCategory.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Subcategory is required");
+        }
+
+        boolean valid = switch (category.trim().toUpperCase()) {
+            case "FACILITIES" -> isOneOf(subCategory, "LIGHTING", "CEILING", "WALL", "FLOOR", "DOOR_WINDOW", "ROOF_LEAKAGE");
+            case "ELECTRICAL" -> isOneOf(subCategory, "POWER_FAILURE", "SOCKET", "WIRING", "CIRCUIT_BREAKER", "GENERATOR");
+            case "PLUMBING" -> isOneOf(subCategory, "WATER_LEAK", "PIPE_DAMAGE", "TAP_PROBLEM", "TOILET_ISSUE", "DRAINAGE_BLOCK");
+            case "IT_NETWORK" -> isOneOf(subCategory, "WIFI_PROBLEM", "INTERNET_DOWN", "LAN_PORT", "SERVER_ISSUE");
+            case "EQUIPMENT" -> isOneOf(subCategory, "PROJECTOR", "LAB_PC", "PRINTER", "MICROPHONE", "CAMERA");
+            case "CLEANING" -> isOneOf(subCategory, "CLASSROOM_CLEANING", "LAB_CLEANING", "WASHROOM_CLEANING", "GARBAGE_COLLECTION", "CHEMICAL_SPILL");
+            case "HVAC" -> isOneOf(subCategory, "AC_NOT_COOLING", "AC_NOISE", "AC_WATER_LEAK", "VENTILATION_PROBLEM");
+            case "SAFETY" -> isOneOf(subCategory, "FIRE_ALARM", "EMERGENCY_EXIT_BLOCKED", "BROKEN_GLASS", "HAZARDOUS_AREA", "SECURITY_CONCERN");
+            case "FURNITURE" -> isOneOf(subCategory, "BROKEN_CHAIR", "BROKEN_TABLE", "CABINET_DAMAGE", "WHITEBOARD_DAMAGE");
+            case "OTHER" -> isOneOf(subCategory, "GENERAL", "UNKNOWN");
+            default -> false;
+        };
+
+        if (!valid) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid category/subcategory combination");
+        }
+    }
+
+    private boolean isOneOf(String value, String... allowed) {
+        if (value == null) {
+            return false;
+        }
+        String normalized = value.trim().toUpperCase();
+        for (String item : allowed) {
+            if (normalized.equals(item)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String buildLocationSummary(TicketRequestDTO request) {

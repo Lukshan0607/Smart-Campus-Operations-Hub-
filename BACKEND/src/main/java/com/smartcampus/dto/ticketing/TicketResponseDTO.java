@@ -21,6 +21,8 @@ public class TicketResponseDTO {
 
     private String category;
 
+    private String subCategory;
+
     private String priority;
 
     private TicketStatus status;

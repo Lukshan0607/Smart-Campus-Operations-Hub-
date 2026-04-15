@@ -4,6 +4,7 @@ import Hero from '../components/Hero';
 import Navigation from '../components/Navigation';
 import Footer from '../components/Footer';
 import { FiBookOpen, FiCalendar, FiTool, FiUsers, FiTrendingUp, FiClock, FiMapPin, FiFilter } from 'react-icons/fi';
+import { formatCategoryDisplay } from '../utils/ticketCategories';
 
 const Home = () => {
   // Sample data for demonstration
@@ -232,7 +233,7 @@ const Home = () => {
                           {ticket.status}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500">{ticket.category}</p>
+                      <p className="text-sm text-gray-500">{formatCategoryDisplay(ticket.category, ticket.subCategory)}</p>
                       <div className="flex items-center justify-between mt-1">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
                           {ticket.priority}

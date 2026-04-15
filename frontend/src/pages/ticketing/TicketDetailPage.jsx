@@ -1,14 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useTickets } from '../../hooks/useTickets';
 import TicketDetail from '../../components/ticketing/TicketDetail';
 import TicketForm from '../../components/ticketing/TicketForm';
-import { getUser } from '../../utils/auth';
+import { defaultDashboardPath, getUser } from '../../utils/auth';
 
 const TicketDetailPage = () => {
   const { id } = useParams();
-  const { selectedTicket, loading, error, fetchTicket, updateStatus, updateTicket } = useTickets();
+  const navigate = useNavigate();
+  const { selectedTicket, loading, error, fetchTicket, updateStatus, updateTicket, deleteTicket } = useTickets();
   const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const currentUser = getUser();
 
   useEffect(() => {
@@ -20,6 +22,12 @@ const TicketDetailPage = () => {
   useEffect(() => {
     setIsEditing(false);
   }, [selectedTicket?.id]);
+
+  useEffect(() => {
+    if (selectedTicket && selectedTicket.status !== 'OPEN' && isEditing) {
+      setIsEditing(false);
+    }
+  }, [selectedTicket, isEditing]);
 
   const canEdit = useMemo(() => {
     if (!selectedTicket || !currentUser) return false;
@@ -47,11 +55,26 @@ const TicketDetailPage = () => {
     }
   };
 
+  const handleDeleteTicket = async () => {
+    try {
+      await deleteTicket(Number(id));
+      navigate(defaultDashboardPath(), {
+        replace: true,
+        state: { message: 'Ticket deleted successfully' },
+      });
+    } catch (error) {
+      console.error('Failed to delete ticket:', error);
+    } finally {
+      setShowDeleteConfirm(false);
+    }
+  };
+
   const editFormData = selectedTicket
     ? {
         title: selectedTicket.title || '',
         description: selectedTicket.description || '',
-        category: selectedTicket.category || 'MAINTENANCE',
+        category: selectedTicket.category || 'FACILITIES',
+        subCategory: selectedTicket.subCategory || 'LIGHTING',
         priority: selectedTicket.priority || 'MEDIUM',
         locationCategory: selectedTicket.locationCategory || 'MAIN_BUILDING',
         buildingName: selectedTicket.buildingName || 'Main Building',
@@ -107,9 +130,36 @@ const TicketDetailPage = () => {
           isAdmin={false}
           isTechnician={false}
           canEdit={canEdit}
+          onDeleteTicket={() => setShowDeleteConfirm(true)}
           onEditTicket={() => setIsEditing(true)}
           onAttachmentsChanged={() => fetchTicket(id)}
         />
+      )}
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
+            <h3 className="text-lg font-bold text-gray-900 mb-3">Delete Ticket</h3>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete this ticket? This action cannot be undone.
+              A notification will be sent to the technician and admin.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteTicket}
+                className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition"
+              >
+                OK Delete
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 bg-gray-300 text-gray-900 py-2 rounded-lg hover:bg-gray-400 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

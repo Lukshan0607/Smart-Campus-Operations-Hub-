@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import StatusBadge from './StatusBadge';
 import CommentSection from './CommentSection';
 import AttachmentUpload from './AttachmentUpload';
+import { formatCategoryDisplay } from '../../utils/ticketCategories';
 
 const TicketDetail = ({
   ticket,
@@ -11,6 +12,7 @@ const TicketDetail = ({
   isAdmin,
   isTechnician,
   canEdit,
+  onDeleteTicket,
   onEditTicket,
   onAttachmentsChanged,
 }) => {
@@ -56,7 +58,7 @@ const TicketDetail = ({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 pb-6 border-b">
         <div>
           <p className="text-sm text-gray-500">Category</p>
-          <p className="font-semibold text-gray-900">{ticket.category}</p>
+          <p className="font-semibold text-gray-900">{formatCategoryDisplay(ticket.category, ticket.subCategory)}</p>
         </div>
         <div>
           <p className="text-sm text-gray-500">Priority</p>
@@ -148,13 +150,34 @@ const TicketDetail = ({
         </div>
       )}
 
-      {canEdit && (
+      {canEdit && ticket.status === 'OPEN' && (
         <div className="mb-6 pb-6 border-b flex gap-3">
           <button
             onClick={onEditTicket}
             className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition"
           >
             Edit Ticket
+          </button>
+          <button
+            onClick={onDeleteTicket}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+          >
+            Delete Ticket
+          </button>
+        </div>
+      )}
+
+      {canEdit && ticket.status !== 'OPEN' && (
+        <div className="mb-6 pb-6 border-b">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4 text-yellow-900">
+            You cannot edit this ticket because it is already in progress or has moved to a later step.
+            You can delete the ticket if needed.
+          </div>
+          <button
+            onClick={onDeleteTicket}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+          >
+            Delete Ticket
           </button>
         </div>
       )}

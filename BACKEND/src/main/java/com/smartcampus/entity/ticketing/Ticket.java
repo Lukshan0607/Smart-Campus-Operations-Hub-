@@ -31,6 +31,8 @@ public class Ticket {
     @Column(nullable = false)
     private String category;
 
+    private String subCategory;
+
     @Column(nullable = false)
     private String priority;
 
