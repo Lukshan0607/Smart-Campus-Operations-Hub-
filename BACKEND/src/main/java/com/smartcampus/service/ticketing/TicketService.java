@@ -13,6 +13,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -142,6 +144,7 @@ public class TicketService {
         }
 
         ticket.setStatus(TicketStatus.RESOLVED);
+        ticket.setCompletionNotes(resolutionNote);
         ticket.setResolutionNote(resolutionNote);
         ticket.setClosedAt(LocalDateTime.now());
         Ticket updated = ticketRepository.save(ticket);
@@ -176,6 +179,31 @@ public class TicketService {
         return mapToDTO(updated);
     }
 
+    public TicketResponseDTO setDeadline(Long id, LocalDateTime expectedCompletionAt, String warningMessage) {
+        Ticket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + id));
+
+        if (expectedCompletionAt != null && expectedCompletionAt.isBefore(LocalDateTime.now().minusMinutes(1))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Expected completion time must be in the future");
+        }
+
+        ticket.setExpectedCompletionAt(expectedCompletionAt);
+        ticket.setWarningMessage(warningMessage != null && !warningMessage.isBlank() ? warningMessage.trim() : null);
+
+        Ticket updated = ticketRepository.save(ticket);
+
+        if (ticket.getAssignedTechnicianId() != null) {
+            notificationService.create(
+                    ticket.getAssignedTechnicianId(),
+                    ticket.getAssignedTechnicianName() != null ? ticket.getAssignedTechnicianName() : "technician",
+                    "Deadline updated",
+                    "Deadline for ticket #" + ticket.getId() + " is set to " + expectedCompletionAt + "."
+            );
+        }
+
+        return mapToDTO(updated);
+    }
+
     private TicketResponseDTO mapToDTO(Ticket ticket) {
         TicketResponseDTO dto = new TicketResponseDTO();
         dto.setId(ticket.getId());
@@ -198,7 +226,10 @@ public class TicketService {
         dto.setAssignedTechnicianId(ticket.getAssignedTechnicianId());
         dto.setAssignedTechnicianName(ticket.getAssignedTechnicianName());
         dto.setResolutionNote(ticket.getResolutionNote());
+        dto.setCompletionNotes(ticket.getCompletionNotes());
         dto.setRejectionReason(ticket.getRejectionReason());
+        dto.setExpectedCompletionAt(ticket.getExpectedCompletionAt());
+        dto.setWarningMessage(ticket.getWarningMessage());
         dto.setCreatedAt(ticket.getCreatedAt());
         dto.setUpdatedAt(ticket.getUpdatedAt());
         dto.setClosedAt(ticket.getClosedAt());
@@ -207,9 +238,47 @@ public class TicketService {
     }
 
     private Long extractUserIdFromContext() {
-        // Extract from SecurityContext - this is a placeholder
-        // In a real scenario, you'd extract from JWT or user principal
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes != null) {
+            String userIdHeader = attributes.getRequest().getHeader("X-User-Id");
+            if (userIdHeader != null && !userIdHeader.isBlank()) {
+                try {
+                    return Long.parseLong(userIdHeader.trim());
+                } catch (NumberFormatException ignored) {
+                }
+            }
+
+            String usernameHeader = attributes.getRequest().getHeader("X-Username");
+            Long resolvedFromHeader = resolveDemoUserId(usernameHeader);
+            if (resolvedFromHeader != null) {
+                return resolvedFromHeader;
+            }
+        }
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.getName() != null) {
+            Long resolvedFromAuth = resolveDemoUserId(authentication.getName());
+            if (resolvedFromAuth != null) {
+                return resolvedFromAuth;
+            }
+        }
+
         return 1L;
+    }
+
+    private Long resolveDemoUserId(String username) {
+        if (username == null || username.isBlank()) {
+            return null;
+        }
+
+        String normalized = username.trim().toLowerCase();
+        return switch (normalized) {
+            case "admin" -> 99L;
+            case "technician1" -> 2L;
+            case "tech-support" -> 3L;
+            case "lecturer1" -> 10L;
+            default -> null;
+        };
     }
 
     private boolean hasRole(String role) {

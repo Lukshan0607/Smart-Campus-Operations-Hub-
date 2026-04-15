@@ -75,7 +75,15 @@ public class Ticket {
     private String resolutionNote;
 
     @Column(columnDefinition = "TEXT")
+    private String completionNotes;
+
+    @Column(columnDefinition = "TEXT")
     private String rejectionReason;
+
+    private LocalDateTime expectedCompletionAt;
+
+    @Column(length = 500)
+    private String warningMessage;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

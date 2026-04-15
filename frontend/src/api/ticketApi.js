@@ -1,12 +1,21 @@
 import axios from 'axios';
-import { getToken } from '../utils/auth';
+import { getToken, getUser } from '../utils/auth';
 
 const API_BASE = '/api';
 
 const applyAuthHeader = () => {
   const token = getToken();
+  const user = getUser();
   if (token) {
     axios.defaults.headers.common.Authorization = `Bearer ${token}`;
+  }
+
+  if (user?.userId != null) {
+    axios.defaults.headers.common['X-User-Id'] = String(user.userId);
+  }
+
+  if (user?.username) {
+    axios.defaults.headers.common['X-Username'] = String(user.username);
   }
 };
 
@@ -64,7 +73,12 @@ const ticketApi = {
 
   adminUpdateStatus: (id, status, rejectionReason) => {
     applyAuthHeader();
-    return axios.patch(`${API_BASE}/tickets/${id}/admin-status`, { status, rejectionReason });
+    return axios.patch(`${API_BASE}/tickets/${id}/admin-status`, { status, reason: rejectionReason });
+  },
+
+  setTicketDeadline: (id, expectedCompletionAt, warningMessage) => {
+    applyAuthHeader();
+    return axios.patch(`${API_BASE}/tickets/${id}/deadline`, { expectedCompletionAt, warningMessage });
   },
 
   // 7) POST /api/tickets/{id}/attachments

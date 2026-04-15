@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -104,6 +105,12 @@ public class TicketController {
     public ResponseEntity<TicketResponseDTO> adminStatus(@PathVariable Long id,
                                                          @Valid @RequestBody AdminStatusRequest request) {
         return ResponseEntity.ok(ticketService.adminUpdateStatus(id, request.getStatus(), request.getReason()));
+    }
+
+    @PatchMapping("/{id}/deadline")
+    public ResponseEntity<TicketResponseDTO> updateDeadline(@PathVariable Long id,
+                                                            @Valid @RequestBody DeadlineRequest request) {
+        return ResponseEntity.ok(ticketService.setDeadline(id, request.getExpectedCompletionAt(), request.getWarningMessage()));
     }
 
     @PostMapping(path = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -217,6 +224,29 @@ public class TicketController {
 
         public void setResolutionNote(String resolutionNote) {
             this.resolutionNote = resolutionNote;
+        }
+    }
+
+    public static class DeadlineRequest {
+        @NotNull
+        private LocalDateTime expectedCompletionAt;
+
+        private String warningMessage;
+
+        public LocalDateTime getExpectedCompletionAt() {
+            return expectedCompletionAt;
+        }
+
+        public void setExpectedCompletionAt(LocalDateTime expectedCompletionAt) {
+            this.expectedCompletionAt = expectedCompletionAt;
+        }
+
+        public String getWarningMessage() {
+            return warningMessage;
+        }
+
+        public void setWarningMessage(String warningMessage) {
+            this.warningMessage = warningMessage;
         }
     }
 }

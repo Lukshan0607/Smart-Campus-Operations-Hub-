@@ -23,6 +23,7 @@ public class CommentController {
                                                  @Valid @RequestBody CommentRequest request,
                                                  Principal principal) {
         String username = principal != null ? principal.getName() : "demo-user";
+
         CommentDTO comment = commentService.addComment(ticketId, request.resolveContent(), username);
         return ResponseEntity.status(HttpStatus.CREATED).body(comment);
     }

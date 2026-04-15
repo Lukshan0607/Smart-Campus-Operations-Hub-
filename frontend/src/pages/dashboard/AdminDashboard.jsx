@@ -12,7 +12,11 @@ const AdminDashboard = () => {
   const [selectedStatus, setSelectedStatus] = useState({});
   const [resolutionNotes, setResolutionNotes] = useState({});
   const [rejectionReasons, setRejectionReasons] = useState({});
+  const [deadlineByTicket, setDeadlineByTicket] = useState({});
+  const [warningByTicket, setWarningByTicket] = useState({});
   const [expandedSections, setExpandedSections] = useState({});
+  const [chartPeriod, setChartPeriod] = useState('WEEK');
+  const [selectedTechnicianId, setSelectedTechnicianId] = useState(null);
 
   const STATUSES = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REJECTED'];
   const STATUS_COLORS = {
@@ -22,6 +26,8 @@ const AdminDashboard = () => {
     CLOSED: 'bg-gray-100 text-gray-800',
     REJECTED: 'bg-red-100 text-red-800',
   };
+
+  const CHART_COLORS = ['#3B82F6', '#F59E0B', '#10B981', '#6B7280', '#EF4444', '#8B5CF6', '#14B8A6', '#F97316'];
 
   const load = async () => {
     setLoading(true);
@@ -87,6 +93,24 @@ const AdminDashboard = () => {
     }
   };
 
+  const saveDeadline = async (ticketId) => {
+    const expectedCompletionAt = deadlineByTicket[ticketId];
+    const warningMessage = warningByTicket[ticketId] || '';
+
+    if (!expectedCompletionAt) {
+      setError('Please select expected completion date and time');
+      return;
+    }
+
+    try {
+      await ticketApi.setTicketDeadline(ticketId, expectedCompletionAt, warningMessage);
+      setError('');
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to save deadline and warning');
+    }
+  };
+
   const groupTicketsByCategoryAndPriority = () => {
     const grouped = {};
     const priorityOrder = { 'CRITICAL': 0, 'HIGH': 1, 'MEDIUM': 2, 'LOW': 3 };
@@ -127,6 +151,14 @@ const AdminDashboard = () => {
     return fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
   };
 
+  const toDateTimeLocalValue = (dateValue) => {
+    if (!dateValue) return '';
+    const dt = new Date(dateValue);
+    if (Number.isNaN(dt.getTime())) return '';
+    const pad = (num) => String(num).padStart(2, '0');
+    return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+  };
+
   const toggleSection = (section) => {
     setExpandedSections((prev) => ({
       ...prev,
@@ -143,11 +175,302 @@ const AdminDashboard = () => {
 
   const groupedTickets = groupTicketsByCategoryAndPriority();
 
+  const isWithinCurrentWeek = (dateValue) => {
+    if (!dateValue) return false;
+    const d = new Date(dateValue);
+    if (Number.isNaN(d.getTime())) return false;
+
+    const now = new Date();
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    const day = start.getDay();
+    const diff = day === 0 ? 6 : day - 1;
+    start.setDate(start.getDate() - diff);
+
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+
+    return d >= start && d < end;
+  };
+
+  const isWithinCurrentMonth = (dateValue) => {
+    if (!dateValue) return false;
+    const d = new Date(dateValue);
+    if (Number.isNaN(d.getTime())) return false;
+
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  };
+
+  const isInSelectedPeriod = (ticket) => {
+    if (chartPeriod === 'MONTH') {
+      return isWithinCurrentMonth(ticket.createdAt);
+    }
+    return isWithinCurrentWeek(ticket.createdAt);
+  };
+
+  const periodLabel = chartPeriod === 'MONTH' ? 'This Month' : 'This Week';
+  const periodTickets = tickets.filter(isInSelectedPeriod);
+
+  const categoriesCount = new Set(tickets.map((t) => t.category).filter(Boolean)).size;
+  const prioritiesCount = new Set(tickets.map((t) => t.priority).filter(Boolean)).size;
+  const activeProgressCount = tickets.filter((t) => t.status === 'IN_PROGRESS').length;
+
+  const statusChartData = STATUSES
+    .map((status, idx) => {
+      const count = periodTickets.filter((t) => t.status === status).length;
+      return {
+        label: status,
+        value: count,
+        color: CHART_COLORS[idx % CHART_COLORS.length],
+      };
+    })
+    .filter((item) => item.value > 0);
+
+  const technicianProgressMap = periodTickets.reduce((acc, ticket) => {
+    if (!ticket.assignedTechnicianId && !ticket.assignedTechnicianName) return acc;
+
+    const idKey = ticket.assignedTechnicianId || `name:${ticket.assignedTechnicianName}`;
+    const name = ticket.assignedTechnicianName || `Technician #${ticket.assignedTechnicianId}`;
+
+    if (!acc[idKey]) {
+      acc[idKey] = {
+        id: idKey,
+        name,
+        assigned: 0,
+        completed: 0,
+      };
+    }
+
+    acc[idKey].assigned += 1;
+    if (ticket.status === 'RESOLVED' || ticket.status === 'CLOSED') {
+      acc[idKey].completed += 1;
+    }
+
+    return acc;
+  }, {});
+
+  const technicianProgressData = Object.values(technicianProgressMap)
+    .map((item, idx) => ({
+      ...item,
+      progressPercent: item.assigned > 0 ? Math.round((item.completed / item.assigned) * 100) : 0,
+      label: item.name,
+      value: item.assigned,
+      color: CHART_COLORS[idx % CHART_COLORS.length],
+    }))
+    .sort((a, b) => b.assigned - a.assigned);
+
+  const technicianDirectory = technicians.reduce((acc, tech) => {
+    acc[String(tech.id)] = {
+      id: tech.id,
+      username: tech.username,
+      displayName: tech.displayName || tech.username,
+    };
+    return acc;
+  }, {});
+
+  tickets.forEach((ticket) => {
+    if (!ticket.assignedTechnicianId) return;
+    const key = String(ticket.assignedTechnicianId);
+    if (!technicianDirectory[key]) {
+      technicianDirectory[key] = {
+        id: ticket.assignedTechnicianId,
+        username: ticket.assignedTechnicianName || `technician-${ticket.assignedTechnicianId}`,
+        displayName: ticket.assignedTechnicianName || `Technician #${ticket.assignedTechnicianId}`,
+      };
+    }
+  });
+
+  const technicianNavItems = Object.values(technicianDirectory).sort((a, b) => String(a.displayName).localeCompare(String(b.displayName)));
+
+  const selectedTechnicianJobs = selectedTechnicianId == null
+    ? []
+    : tickets.filter((t) => Number(t.assignedTechnicianId) === Number(selectedTechnicianId));
+
+  const selectedTechnicianWeeklyJobs = selectedTechnicianJobs.filter((t) => isWithinCurrentWeek(t.createdAt));
+
+  const selectedTechnicianWeekChartData = STATUSES
+    .map((status, idx) => {
+      const count = selectedTechnicianWeeklyJobs.filter((t) => t.status === status).length;
+      return {
+        label: status,
+        value: count,
+        color: CHART_COLORS[idx % CHART_COLORS.length],
+      };
+    })
+    .filter((item) => item.value > 0);
+
+  const selectedTechnicianCompletedWeek = selectedTechnicianWeeklyJobs.filter(
+    (t) => t.status === 'RESOLVED' || t.status === 'CLOSED'
+  ).length;
+
+  const selectedTechnicianWeekProgress = selectedTechnicianWeeklyJobs.length > 0
+    ? Math.round((selectedTechnicianCompletedWeek / selectedTechnicianWeeklyJobs.length) * 100)
+    : 0;
+
+  const selectedTechnician = selectedTechnicianId != null
+    ? technicianDirectory[String(selectedTechnicianId)]
+    : null;
+
   return (
     <div className="max-w-7xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Admin Ticket Dashboard</h1>
       {loading && <p className="text-gray-600">Loading...</p>}
       {error && <p className="text-red-600 mb-4">{error}</p>}
+
+      <div className="bg-white border rounded-lg p-4 shadow-sm mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-3">
+          <div>
+            <p className="text-base font-semibold text-gray-900">Top Navigation - Technician Details</p>
+            <p className="text-sm text-gray-500">Select a technician to view assigned jobs and weekly progress</p>
+          </div>
+
+          <div className="inline-flex rounded-lg border overflow-hidden w-fit">
+            <button
+              onClick={() => setChartPeriod('WEEK')}
+              className={`px-4 py-2 text-sm font-semibold ${chartPeriod === 'WEEK' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+            >
+              Weekly
+            </button>
+            <button
+              onClick={() => setChartPeriod('MONTH')}
+              className={`px-4 py-2 text-sm font-semibold border-l ${chartPeriod === 'MONTH' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+            >
+              Monthly
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setSelectedTechnicianId(null)}
+            className={`px-3 py-1.5 rounded-full text-sm border ${selectedTechnicianId == null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
+          >
+            All Technicians
+          </button>
+          {technicianNavItems.map((tech) => (
+            <button
+              key={tech.id}
+              onClick={() => setSelectedTechnicianId(tech.id)}
+              className={`px-3 py-1.5 rounded-full text-sm border ${Number(selectedTechnicianId) === Number(tech.id) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
+            >
+              {tech.displayName}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <SummaryCard
+          title="Categorize"
+          value={categoriesCount}
+          subtitle="Total ticket categories"
+          badgeClass="bg-blue-100 text-blue-700"
+        />
+        <SummaryCard
+          title="Priority Level"
+          value={prioritiesCount}
+          subtitle="Priority types in use"
+          badgeClass="bg-orange-100 text-orange-700"
+        />
+        <SummaryCard
+          title="Progress Level"
+          value={activeProgressCount}
+          subtitle="Tickets currently in progress"
+          badgeClass="bg-green-100 text-green-700"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <PieChartCard
+          title="Progress by Ticket Status"
+          subtitle={`${periodLabel} - Open, in progress, resolved, closed, rejected`}
+          data={statusChartData}
+          centerLabel={`${periodTickets.length}`}
+          centerSubLabel={periodLabel}
+        />
+        <PieChartCard
+          title="Technician Progress Level"
+          subtitle={`${periodLabel} - Assigned workload and completion by technician`}
+          data={technicianProgressData}
+          centerLabel={`${technicianProgressData.length}`}
+          centerSubLabel="Technicians"
+          showProgressPercent
+        />
+      </div>
+
+      {selectedTechnician && (
+        <div className="bg-white border rounded-lg p-4 shadow-sm mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 mb-4">
+            <div>
+              <p className="text-lg font-semibold text-gray-900">{selectedTechnician.displayName} - Job Details</p>
+              <p className="text-sm text-gray-500">ID #{selectedTechnician.id} | Weekly progress overview and assigned jobs</p>
+            </div>
+            <span className="text-xs font-semibold px-2 py-1 rounded bg-blue-100 text-blue-700 w-fit">This Week</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+            <SummaryCard
+              title="Total Assigned"
+              value={selectedTechnicianJobs.length}
+              subtitle="All assigned jobs"
+              badgeClass="bg-indigo-100 text-indigo-700"
+            />
+            <SummaryCard
+              title="This Week Jobs"
+              value={selectedTechnicianWeeklyJobs.length}
+              subtitle="Jobs created this week"
+              badgeClass="bg-yellow-100 text-yellow-700"
+            />
+            <SummaryCard
+              title="Week Progress"
+              value={`${selectedTechnicianWeekProgress}%`}
+              subtitle="Completed this week"
+              badgeClass="bg-green-100 text-green-700"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <PieChartCard
+              title="Technician Weekly Progress Pie Chart"
+              subtitle="Status distribution for this technician (current week)"
+              data={selectedTechnicianWeekChartData}
+              centerLabel={`${selectedTechnicianWeeklyJobs.length}`}
+              centerSubLabel="Week Jobs"
+            />
+
+            <div className="border rounded-lg p-3 bg-gray-50">
+              <p className="text-base font-semibold text-gray-900 mb-3">Assigned Job Details</p>
+              {selectedTechnicianJobs.length === 0 ? (
+                <p className="text-sm text-gray-500">No jobs assigned to this technician yet.</p>
+              ) : (
+                <div className="space-y-2 max-h-72 overflow-auto pr-1">
+                  {selectedTechnicianJobs
+                    .slice()
+                    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+                    .map((job) => (
+                      <div key={job.id} className="bg-white border rounded p-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-gray-900 truncate">#{job.id} {job.title}</p>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded ${
+                            job.status === 'OPEN' ? 'bg-blue-100 text-blue-800' :
+                            job.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' :
+                            job.status === 'RESOLVED' ? 'bg-green-100 text-green-800' :
+                            job.status === 'CLOSED' ? 'bg-gray-100 text-gray-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {job.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">{job.category} | {job.priority} | {job.createdAt ? new Date(job.createdAt).toLocaleString() : '-'}</p>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-6">
         {Object.keys(groupedTickets)
@@ -205,6 +528,15 @@ const AdminDashboard = () => {
                               onRejectionReasonChange={(value) =>
                                 setRejectionReasons((prev) => ({ ...prev, [ticket.id]: value }))
                               }
+                              deadlineValue={deadlineByTicket[ticket.id] ?? toDateTimeLocalValue(ticket.expectedCompletionAt)}
+                              onDeadlineChange={(value) =>
+                                setDeadlineByTicket((prev) => ({ ...prev, [ticket.id]: value }))
+                              }
+                              warningValue={warningByTicket[ticket.id] ?? (ticket.warningMessage || '')}
+                              onWarningChange={(value) =>
+                                setWarningByTicket((prev) => ({ ...prev, [ticket.id]: value }))
+                              }
+                              onSaveDeadline={() => saveDeadline(ticket.id)}
                               onUpdateStatus={(status) => updateStatus(ticket.id, status)}
                               formatLocationCategory={formatLocationCategory}
                               getImageSrc={getImageSrc}
@@ -229,6 +561,138 @@ const Info = ({ label, value }) => (
   </div>
 );
 
+const SummaryCard = ({ title, value, subtitle, badgeClass }) => (
+  <div className="bg-white border rounded-lg p-4 shadow-sm">
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <p className="text-sm font-semibold text-gray-700">{title}</p>
+        <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
+        <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
+      </div>
+      <span className={`text-xs font-semibold px-2 py-1 rounded ${badgeClass}`}>Live</span>
+    </div>
+  </div>
+);
+
+const PieChartCard = ({
+  title,
+  subtitle,
+  data,
+  centerLabel,
+  centerSubLabel,
+  showProgressPercent = false,
+}) => {
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+
+  if (!data.length || total === 0) {
+    return (
+      <div className="bg-white border rounded-lg p-4 shadow-sm">
+        <p className="text-base font-semibold text-gray-900">{title}</p>
+        <p className="text-sm text-gray-500 mb-3">{subtitle}</p>
+        <div className="h-56 flex items-center justify-center text-sm text-gray-500 bg-gray-50 rounded border">
+          No data available
+        </div>
+      </div>
+    );
+  }
+
+  let cumulative = 0;
+  const segments = data.map((item) => {
+    const startAngle = (cumulative / total) * 360;
+    cumulative += item.value;
+    const endAngle = (cumulative / total) * 360;
+    return {
+      ...item,
+      startAngle,
+      endAngle,
+      percentage: Math.round((item.value / total) * 100),
+    };
+  });
+
+  const size = 210;
+  const center = size / 2;
+  const radius = 72;
+  const innerRadius = 40;
+
+  return (
+    <div className="bg-white border rounded-lg p-4 shadow-sm">
+      <p className="text-base font-semibold text-gray-900">{title}</p>
+      <p className="text-sm text-gray-500 mb-3">{subtitle}</p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
+        <div className="flex justify-center">
+          <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+            {segments.map((segment) => (
+              <path
+                key={segment.label}
+                d={describeArc(center, center, radius, segment.startAngle, segment.endAngle, innerRadius)}
+                fill={segment.color}
+              />
+            ))}
+            <circle cx={center} cy={center} r={innerRadius - 1} fill="#FFFFFF" />
+            <text x={center} y={center - 3} textAnchor="middle" className="fill-gray-900 text-lg font-bold">
+              {centerLabel}
+            </text>
+            <text x={center} y={center + 16} textAnchor="middle" className="fill-gray-500 text-xs">
+              {centerSubLabel}
+            </text>
+          </svg>
+        </div>
+
+        <div className="space-y-2 max-h-56 overflow-auto pr-1">
+          {segments.map((segment) => (
+            <div key={segment.label} className="flex items-center justify-between gap-2 text-sm">
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className="w-3 h-3 rounded-full inline-block"
+                  style={{ backgroundColor: segment.color }}
+                />
+                <span className="text-gray-700 truncate">{segment.label}</span>
+              </div>
+              <div className="text-right whitespace-nowrap">
+                <span className="font-semibold text-gray-900">{segment.value}</span>
+                <span className="text-xs text-gray-500 ml-1">({segment.percentage}%)</span>
+                {showProgressPercent && typeof segment.progressPercent === 'number' && (
+                  <span className="text-xs text-green-600 ml-2">Done {segment.progressPercent}%</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
+  const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180;
+  return {
+    x: centerX + radius * Math.cos(angleInRadians),
+    y: centerY + radius * Math.sin(angleInRadians),
+  };
+};
+
+const describeArc = (x, y, radius, startAngle, endAngle, innerRadius) => {
+  if (endAngle - startAngle >= 360) {
+    endAngle = startAngle + 359.999;
+  }
+
+  const start = polarToCartesian(x, y, radius, endAngle);
+  const end = polarToCartesian(x, y, radius, startAngle);
+  const innerStart = polarToCartesian(x, y, innerRadius, endAngle);
+  const innerEnd = polarToCartesian(x, y, innerRadius, startAngle);
+
+  const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
+
+  return [
+    `M ${start.x} ${start.y}`,
+    `A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`,
+    `L ${innerEnd.x} ${innerEnd.y}`,
+    `A ${innerRadius} ${innerRadius} 0 ${largeArcFlag} 1 ${innerStart.x} ${innerStart.y}`,
+    'Z',
+  ].join(' ');
+};
+
 const TicketCard = ({
   ticket,
   expanded,
@@ -243,6 +707,11 @@ const TicketCard = ({
   onResolutionNoteChange,
   rejectionReason,
   onRejectionReasonChange,
+  deadlineValue,
+  onDeadlineChange,
+  warningValue,
+  onWarningChange,
+  onSaveDeadline,
   onUpdateStatus,
   formatLocationCategory,
   getImageSrc,
@@ -256,6 +725,10 @@ const TicketCard = ({
   };
 
   const allowedNextStatuses = statusTransitions[ticket.status] || [];
+  const isFinalStatus = ['RESOLVED', 'CLOSED', 'REJECTED'].includes(ticket.status);
+  const isOverdue = ticket.expectedCompletionAt && !isFinalStatus
+    ? new Date(ticket.expectedCompletionAt).getTime() < Date.now()
+    : false;
 
   return (
     <div className="border rounded-lg bg-white shadow-sm hover:shadow-md transition">
@@ -293,7 +766,23 @@ const TicketCard = ({
             <Info label="Floor / Block / Room" value={`${ticket.floorNumber ?? '-'} / ${ticket.block || '-'} / ${ticket.roomNumber || '-'}`} />
             <Info label="Contact" value={ticket.contactPhone || '-'} />
             <Info label="Created At" value={ticket.createdAt ? new Date(ticket.createdAt).toLocaleString() : '-'} />
+            <Info label="Expected Completion" value={ticket.expectedCompletionAt ? new Date(ticket.expectedCompletionAt).toLocaleString() : 'Not set'} />
+            <Info label="Technician Completion" value={isFinalStatus ? 'Completed' : 'Pending'} />
           </div>
+
+          {ticket.warningMessage && !isFinalStatus && (
+            <div className="bg-amber-50 p-3 rounded border border-amber-300">
+              <p className="text-sm font-semibold text-amber-800">⚠ Warning Message</p>
+              <p className="text-sm text-amber-900 whitespace-pre-wrap">{ticket.warningMessage}</p>
+            </div>
+          )}
+
+          {isOverdue && (
+            <div className="bg-red-50 p-3 rounded border border-red-300">
+              <p className="text-sm font-semibold text-red-800">Overdue Ticket</p>
+              <p className="text-sm text-red-900">Technician has not completed this ticket by the expected time.</p>
+            </div>
+          )}
 
           {/* Description */}
           <div className="bg-white p-3 rounded border">
@@ -385,6 +874,37 @@ const TicketCard = ({
                 Assign
               </button>
             </div>
+          </div>
+
+          <div className="bg-white p-4 rounded border">
+            <p className="text-sm font-semibold text-gray-900 mb-3">Allocate Time & Warning Message</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Expected completion date/time</label>
+                <input
+                  type="datetime-local"
+                  value={deadlineValue || ''}
+                  onChange={(e) => onDeadlineChange(e.target.value)}
+                  className="w-full border rounded px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-600 mb-1">Warning message (if delayed)</label>
+                <input
+                  type="text"
+                  value={warningValue || ''}
+                  onChange={(e) => onWarningChange(e.target.value)}
+                  className="w-full border rounded px-3 py-2 text-sm"
+                  placeholder="Example: Complete before class starts at 9 AM"
+                />
+              </div>
+            </div>
+            <button
+              onClick={onSaveDeadline}
+              className="mt-3 px-4 py-2 rounded bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
+            >
+              Save Deadline
+            </button>
           </div>
 
           {/* Status Workflow */}

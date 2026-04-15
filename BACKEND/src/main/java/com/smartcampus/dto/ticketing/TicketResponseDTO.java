@@ -53,7 +53,13 @@ public class TicketResponseDTO {
 
     private String resolutionNote;
 
+    private String completionNotes;
+
     private String rejectionReason;
+
+    private LocalDateTime expectedCompletionAt;
+
+    private String warningMessage;
 
     private LocalDateTime createdAt;
 
