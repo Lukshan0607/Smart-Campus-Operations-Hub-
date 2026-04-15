@@ -9,6 +9,9 @@ import { defaultDashboardPath } from './utils/auth';
 import MyTicketsDashboard from './pages/dashboard/MyTicketsDashboard';
 import TechnicianJobsDashboard from './pages/dashboard/TechnicianJobsDashboard';
 import AdminDashboard from './pages/dashboard/AdminDashboard';
+import CategoryPriorityDetailsPage from './pages/dashboard/CategoryPriorityDetailsPage';
+import AdminBottomDetailsPage from './pages/dashboard/AdminBottomDetailsPage';
+import AssignTechniciansPage from './pages/dashboard/AssignTechniciansPage';
 
 function App() {
   return (
@@ -41,6 +44,33 @@ function App() {
         element={
           <ProtectedRoute roles={["ADMIN"]}>
             <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/category-priority"
+        element={
+          <ProtectedRoute roles={["ADMIN"]}>
+            <CategoryPriorityDetailsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/bottom-details"
+        element={
+          <ProtectedRoute roles={["ADMIN"]}>
+            <AdminBottomDetailsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/assign-technicians"
+        element={
+          <ProtectedRoute roles={["ADMIN"]}>
+            <AssignTechniciansPage />
           </ProtectedRoute>
         }
       />

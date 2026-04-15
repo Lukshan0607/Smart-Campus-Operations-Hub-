@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ticketApi from '../../api/ticketApi';
 import authApi from '../../api/authApi';
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [selectedTechByTicket, setSelectedTechByTicket] = useState({});
@@ -17,6 +19,7 @@ const AdminDashboard = () => {
   const [expandedSections, setExpandedSections] = useState({});
   const [chartPeriod, setChartPeriod] = useState('WEEK');
   const [selectedTechnicianId, setSelectedTechnicianId] = useState(null);
+  const [activeTopView, setActiveTopView] = useState('OVERVIEW');
 
   const STATUSES = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REJECTED'];
   const STATUS_COLORS = {
@@ -312,6 +315,13 @@ const AdminDashboard = () => {
     ? technicianDirectory[String(selectedTechnicianId)]
     : null;
 
+  const handleSelectTechnician = (techId) => {
+    setSelectedTechnicianId(techId);
+    if (techId != null) {
+      setActiveTopView('TECHNICIAN_DETAILS');
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Admin Ticket Dashboard</h1>
@@ -319,10 +329,43 @@ const AdminDashboard = () => {
       {error && <p className="text-red-600 mb-4">{error}</p>}
 
       <div className="bg-white border rounded-lg p-4 shadow-sm mb-6">
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            onClick={() => setActiveTopView('OVERVIEW')}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold border ${activeTopView === 'OVERVIEW' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+          >
+            Dashboard Overview
+          </button>
+          <button
+            onClick={() => setActiveTopView('TECHNICIAN_DETAILS')}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold border ${activeTopView === 'TECHNICIAN_DETAILS' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+          >
+            Technician Details
+          </button>
+          <button
+            onClick={() => navigate('/admin/category-priority')}
+            className="px-4 py-2 rounded-lg text-sm font-semibold border bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+          >
+            Category & Priority Details
+          </button>
+          <button
+            onClick={() => navigate('/admin/bottom-details')}
+            className="px-4 py-2 rounded-lg text-sm font-semibold border bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+          >
+            More Details Page
+          </button>
+          <button
+            onClick={() => navigate('/admin/assign-technicians')}
+            className="px-4 py-2 rounded-lg text-sm font-semibold border bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+          >
+            Assign Technicians
+          </button>
+        </div>
+
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-3">
           <div>
-            <p className="text-base font-semibold text-gray-900">Top Navigation - Technician Details</p>
-            <p className="text-sm text-gray-500">Select a technician to view assigned jobs and weekly progress</p>
+            <p className="text-base font-semibold text-gray-900">Top Navigation</p>
+            <p className="text-sm text-gray-500">Navigate to overview or technician details. Click a technician to show detailed jobs and progress.</p>
           </div>
 
           <div className="inline-flex rounded-lg border overflow-hidden w-fit">
@@ -343,7 +386,7 @@ const AdminDashboard = () => {
 
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => setSelectedTechnicianId(null)}
+            onClick={() => handleSelectTechnician(null)}
             className={`px-3 py-1.5 rounded-full text-sm border ${selectedTechnicianId == null ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
           >
             All Technicians
@@ -351,7 +394,7 @@ const AdminDashboard = () => {
           {technicianNavItems.map((tech) => (
             <button
               key={tech.id}
-              onClick={() => setSelectedTechnicianId(tech.id)}
+              onClick={() => handleSelectTechnician(tech.id)}
               className={`px-3 py-1.5 rounded-full text-sm border ${Number(selectedTechnicianId) === Number(tech.id) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-300'}`}
             >
               {tech.displayName}
@@ -360,6 +403,8 @@ const AdminDashboard = () => {
         </div>
       </div>
 
+      {activeTopView === 'OVERVIEW' && (
+      <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <SummaryCard
           title="Categorize"
@@ -398,8 +443,11 @@ const AdminDashboard = () => {
           showProgressPercent
         />
       </div>
+      </>
+      )}
 
-      {selectedTechnician && (
+      {activeTopView === 'TECHNICIAN_DETAILS' && (
+        selectedTechnician ? (
         <div className="bg-white border rounded-lg p-4 shadow-sm mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 mb-4">
             <div>
@@ -470,8 +518,15 @@ const AdminDashboard = () => {
             </div>
           </div>
         </div>
+        ) : (
+          <div className="bg-white border rounded-lg p-6 shadow-sm mb-6">
+            <p className="text-base font-semibold text-gray-900 mb-2">Technician Details</p>
+            <p className="text-sm text-gray-600">Select a technician from the top navigation to view assigned jobs and weekly progress pie chart.</p>
+          </div>
+        )
       )}
 
+      {activeTopView === 'OVERVIEW' && (
       <div className="space-y-6">
         {Object.keys(groupedTickets)
           .sort()
@@ -549,6 +604,18 @@ const AdminDashboard = () => {
               )}
             </div>
           ))}
+      </div>
+      )}
+
+      <div className="mt-8 bg-white border rounded-lg p-4 shadow-sm">
+        <p className="text-base font-semibold text-gray-900">More Details Page</p>
+        <p className="text-sm text-gray-500 mt-1">Open another page for additional admin details and quick summary.</p>
+        <button
+          onClick={() => navigate('/admin/bottom-details')}
+          className="mt-3 px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-semibold hover:bg-black"
+        >
+          Go to Bottom Details Page
+        </button>
       </div>
     </div>
   );
