@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import StatusBadge from './StatusBadge';
 import CommentSection from './CommentSection';
 import AttachmentUpload from './AttachmentUpload';
@@ -12,6 +12,8 @@ const TicketDetail = ({
   isAdmin,
   isTechnician,
   canEdit,
+  canRate,
+  onSubmitRating,
   onDeleteTicket,
   onEditTicket,
   onAttachmentsChanged,
@@ -19,6 +21,17 @@ const TicketDetail = ({
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(ticket?.status);
   const [resolutionNote, setResolutionNote] = useState('');
+  const [rating, setRating] = useState(ticket?.rating || 0);
+  const [feedback, setFeedback] = useState(ticket?.feedback || '');
+  const [ratingSaving, setRatingSaving] = useState(false);
+  const [ratingError, setRatingError] = useState('');
+
+  useEffect(() => {
+    setSelectedStatus(ticket?.status);
+    setRating(ticket?.rating || 0);
+    setFeedback(ticket?.feedback || '');
+    setRatingError('');
+  }, [ticket?.id, ticket?.status, ticket?.rating, ticket?.feedback]);
 
   if (loading) {
     return (
@@ -40,6 +53,22 @@ const TicketDetail = ({
       setResolutionNote('');
     } catch (error) {
       console.error('Failed to update status:', error);
+    }
+  };
+
+  const handleRatingSubmit = async () => {
+    if (!rating || rating < 1 || rating > 5) {
+      setRatingError('Please select a rating from 1 to 5 stars');
+      return;
+    }
+    try {
+      setRatingSaving(true);
+      setRatingError('');
+      await onSubmitRating?.(rating, feedback);
+    } catch (error) {
+      setRatingError(error?.response?.data?.message || 'Failed to submit rating');
+    } finally {
+      setRatingSaving(false);
     }
   };
 
@@ -127,6 +156,56 @@ const TicketDetail = ({
         <div className="mb-6 pb-6 border-b bg-green-50 p-4 rounded">
           <h2 className="text-lg font-bold text-gray-900 mb-3">Resolution</h2>
           <p className="text-gray-700 whitespace-pre-wrap">{ticket.resolutionNote}</p>
+        </div>
+      )}
+
+      {(ticket.rating || canRate) && (
+        <div className="mb-6 pb-6 border-b">
+          <h2 className="text-lg font-bold text-gray-900 mb-3">Resolution Rating</h2>
+
+          {ticket.rating ? (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-gray-700 mb-2">Service Rating</p>
+              <p className="text-2xl">{renderStars(ticket.rating)}</p>
+              {ticket.feedback && (
+                <p className="text-sm text-gray-800 mt-3 whitespace-pre-wrap">Comment: {ticket.feedback}</p>
+              )}
+            </div>
+          ) : null}
+
+          {canRate && (
+            <div className="bg-white border rounded-lg p-4">
+              <p className="text-sm font-semibold text-gray-900 mb-2">Rate this service</p>
+              <div className="flex items-center gap-2 mb-3">
+                {[1, 2, 3, 4, 5].map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setRating(value)}
+                    className={`text-2xl ${rating >= value ? 'text-yellow-500' : 'text-gray-300'} hover:text-yellow-500 transition`}
+                    aria-label={`Rate ${value} star`}
+                  >
+                    ★
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                placeholder="Comment: Technician fixed quickly"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 h-24 mb-3"
+              />
+              {ratingError && <p className="text-sm text-red-600 mb-3">{ratingError}</p>}
+              <button
+                type="button"
+                onClick={handleRatingSubmit}
+                disabled={ratingSaving}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition"
+              >
+                {ratingSaving ? 'Saving...' : ticket.rating ? 'Update Rating' : 'Submit Rating'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -257,6 +336,11 @@ const formatLocationCategory = (category) => {
     default:
       return category;
   }
+};
+
+const renderStars = (rating) => {
+  const safeRating = Math.max(0, Math.min(5, Number(rating) || 0));
+  return '★'.repeat(safeRating) + '☆'.repeat(5 - safeRating);
 };
 
 export default TicketDetail;

@@ -87,6 +87,11 @@ public class Ticket {
     @Column(length = 500)
     private String warningMessage;
 
+    private Integer rating;
+
+    @Column(columnDefinition = "TEXT")
+    private String feedback;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

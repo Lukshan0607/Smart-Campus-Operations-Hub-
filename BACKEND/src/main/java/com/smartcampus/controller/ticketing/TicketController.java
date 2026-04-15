@@ -7,6 +7,8 @@ import com.smartcampus.entity.TicketStatus;
 import com.smartcampus.service.ticketing.AttachmentService;
 import com.smartcampus.service.ticketing.TicketService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -127,6 +129,14 @@ public class TicketController {
     public ResponseEntity<TicketResponseDTO> updateDeadline(@PathVariable Long id,
                                                             @Valid @RequestBody DeadlineRequest request) {
         return ResponseEntity.ok(ticketService.setDeadline(id, request.getExpectedCompletionAt(), request.getWarningMessage()));
+    }
+
+    @PatchMapping("/{id}/rating")
+    public ResponseEntity<TicketResponseDTO> submitRating(@PathVariable Long id,
+                                                          @Valid @RequestBody RatingRequest request,
+                                                          Principal principal) {
+        String username = principal != null ? principal.getName() : "demo-user";
+        return ResponseEntity.ok(ticketService.submitRating(id, request.getRating(), request.getFeedback(), username));
     }
 
     @PostMapping(path = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -263,6 +273,31 @@ public class TicketController {
 
         public void setWarningMessage(String warningMessage) {
             this.warningMessage = warningMessage;
+        }
+    }
+
+    public static class RatingRequest {
+        @NotNull
+        @Min(1)
+        @Max(5)
+        private Integer rating;
+
+        private String feedback;
+
+        public Integer getRating() {
+            return rating;
+        }
+
+        public void setRating(Integer rating) {
+            this.rating = rating;
+        }
+
+        public String getFeedback() {
+            return feedback;
+        }
+
+        public void setFeedback(String feedback) {
+            this.feedback = feedback;
         }
     }
 }

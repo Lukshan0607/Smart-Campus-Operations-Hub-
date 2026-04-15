@@ -116,6 +116,25 @@ export const useTickets = () => {
     [dispatch]
   );
 
+  const submitRating = useCallback(
+    async (id, rating, feedback) => {
+      dispatch(setLoading(true));
+      try {
+        const response = await ticketApi.submitRating(id, rating, feedback);
+        dispatch(updateTicketDetails(response.data));
+        dispatch(setSelectedTicket(response.data));
+        dispatch(clearError());
+        return response.data;
+      } catch (err) {
+        dispatch(setError(err.response?.data?.message || 'Failed to submit rating'));
+        throw err;
+      } finally {
+        dispatch(setLoading(false));
+      }
+    },
+    [dispatch]
+  );
+
   const updateStatus = useCallback(
     async (id, status, resolutionNote) => {
       dispatch(setLoading(true));
@@ -200,6 +219,7 @@ export const useTickets = () => {
     createTicket,
     updateTicket,
     deleteTicket,
+    submitRating,
     updateStatus,
     assignTechnician,
     uploadAttachments,

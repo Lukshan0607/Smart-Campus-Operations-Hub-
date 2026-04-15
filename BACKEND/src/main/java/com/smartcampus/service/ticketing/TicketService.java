@@ -255,6 +255,46 @@ public class TicketService {
         return mapToDTO(updated);
     }
 
+    public TicketResponseDTO submitRating(Long id, Integer rating, String feedback, String username) {
+        Ticket ticket = ticketRepository.findById(id)
+                .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + id));
+
+        Long currentUserId = extractUserIdFromContext();
+        boolean isAdmin = hasRole("ADMIN");
+        boolean isOwner = ticket.getCreatorId() != null && ticket.getCreatorId().equals(currentUserId);
+
+        if (!isAdmin && !isOwner) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the ticket submitter can rate this ticket");
+        }
+
+        if (ticket.getStatus() != TicketStatus.CLOSED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rating is available only after the ticket is closed");
+        }
+
+        if (rating == null || rating < 1 || rating > 5) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rating must be between 1 and 5");
+        }
+
+        ticket.setRating(rating);
+        ticket.setFeedback(feedback != null && !feedback.isBlank() ? feedback.trim() : null);
+
+        Ticket updated = ticketRepository.save(ticket);
+
+        if (ticket.getAssignedTechnicianId() != null) {
+            notificationService.create(
+                    ticket.getAssignedTechnicianId(),
+                    ticket.getAssignedTechnicianName() != null ? ticket.getAssignedTechnicianName() : "technician",
+                    "Ticket rated",
+                    "Ticket #" + ticket.getId() + " received a service rating of " + rating + " star(s)."
+            );
+        }
+
+        notificationService.create(99L, "admin",
+                "Ticket rated", "Ticket #" + ticket.getId() + " was rated " + rating + " star(s) by " + username + ".");
+
+        return mapToDTO(updated);
+    }
+
     public TicketResponseDTO setDeadline(Long id, LocalDateTime expectedCompletionAt, String warningMessage) {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + id));
@@ -307,6 +347,8 @@ public class TicketService {
         dto.setRejectionReason(ticket.getRejectionReason());
         dto.setExpectedCompletionAt(ticket.getExpectedCompletionAt());
         dto.setWarningMessage(ticket.getWarningMessage());
+        dto.setRating(ticket.getRating());
+        dto.setFeedback(ticket.getFeedback());
         dto.setCreatedAt(ticket.getCreatedAt());
         dto.setUpdatedAt(ticket.getUpdatedAt());
         dto.setClosedAt(ticket.getClosedAt());

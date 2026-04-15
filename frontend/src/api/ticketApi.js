@@ -93,6 +93,11 @@ const ticketApi = {
     return axios.patch(`${API_BASE}/tickets/${id}/deadline`, { expectedCompletionAt, warningMessage });
   },
 
+  submitRating: (id, rating, feedback) => {
+    applyAuthHeader();
+    return axios.patch(`${API_BASE}/tickets/${id}/rating`, { rating, feedback });
+  },
+
   // 7) POST /api/tickets/{id}/attachments
   uploadAttachments: (id, files) => {
     applyAuthHeader();

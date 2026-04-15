@@ -8,7 +8,7 @@ import { defaultDashboardPath, getUser } from '../../utils/auth';
 const TicketDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { selectedTicket, loading, error, fetchTicket, updateStatus, updateTicket, deleteTicket } = useTickets();
+  const { selectedTicket, loading, error, fetchTicket, updateStatus, updateTicket, deleteTicket, submitRating } = useTickets();
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const currentUser = getUser();
@@ -33,6 +33,12 @@ const TicketDetailPage = () => {
     if (!selectedTicket || !currentUser) return false;
     if (currentUser.role === 'ADMIN') return true;
     return String(selectedTicket.creatorId) === String(currentUser.userId);
+  }, [selectedTicket, currentUser]);
+
+  const canRate = useMemo(() => {
+    if (!selectedTicket || !currentUser) return false;
+    const isOwner = String(selectedTicket.creatorId) === String(currentUser.userId);
+    return isOwner && selectedTicket.status === 'CLOSED';
   }, [selectedTicket, currentUser]);
 
   const handleStatusUpdate = async (ticketId, status, resolutionNote) => {
@@ -66,6 +72,16 @@ const TicketDetailPage = () => {
       console.error('Failed to delete ticket:', error);
     } finally {
       setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleRatingSubmit = async (rating, feedback) => {
+    try {
+      await submitRating(Number(id), rating, feedback);
+      await fetchTicket(id);
+    } catch (error) {
+      console.error('Failed to submit rating:', error);
+      throw error;
     }
   };
 
@@ -130,6 +146,8 @@ const TicketDetailPage = () => {
           isAdmin={false}
           isTechnician={false}
           canEdit={canEdit}
+          canRate={canRate}
+          onSubmitRating={handleRatingSubmit}
           onDeleteTicket={() => setShowDeleteConfirm(true)}
           onEditTicket={() => setIsEditing(true)}
           onAttachmentsChanged={() => fetchTicket(id)}

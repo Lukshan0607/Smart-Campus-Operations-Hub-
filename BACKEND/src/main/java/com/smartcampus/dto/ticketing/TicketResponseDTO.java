@@ -63,6 +63,10 @@ public class TicketResponseDTO {
 
     private String warningMessage;
 
+    private Integer rating;
+
+    private String feedback;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
