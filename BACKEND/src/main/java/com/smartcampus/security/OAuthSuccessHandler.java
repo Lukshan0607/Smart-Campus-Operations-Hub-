@@ -47,6 +47,13 @@ public class OAuthSuccessHandler implements AuthenticationSuccessHandler {
 
         if (existingUser.isPresent()) {
             user = existingUser.get();
+            
+            // Check if user is deactivated
+            if (!"Active".equals(user.getStatus())) {
+                // Redirect to login page with error for deactivated user
+                response.sendRedirect("http://localhost:5173/login?error=account_deactivated");
+                return;
+            }
         } else {
             // Create new user for Google OAuth
             long count = userRepository.count() + 1;

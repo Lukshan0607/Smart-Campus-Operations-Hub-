@@ -7,7 +7,7 @@ const Header = () => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
+    const storedUser = localStorage.getItem("sc_user");
 
     if (storedUser) {
       setUser(JSON.parse(storedUser));
@@ -19,8 +19,8 @@ const Header = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    localStorage.removeItem("sc_token");
+    localStorage.removeItem("sc_user");
     setUser(null);
     window.location.href = "/login";
   };

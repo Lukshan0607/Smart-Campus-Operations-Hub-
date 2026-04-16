@@ -11,6 +11,8 @@ import { defaultDashboardPath } from './utils/auth';
 import MyTicketsDashboard from './pages/dashboard/MyTicketsDashboard';
 import TechnicianJobsDashboard from './pages/dashboard/TechnicianJobsDashboard';
 import AdminDashboard from './pages/dashboard/AdminDashboard';
+import AdminDashboardNew from './pages/dashboard/AdminDashboardNew';
+import AdminUserManagement from './pages/dashboard/AdminUserManagement';
 import CategoryPriorityDetailsPage from './pages/dashboard/CategoryPriorityDetailsPage';
 import AdminBottomDetailsPage from './pages/dashboard/AdminBottomDetailsPage';
 import AssignTechniciansPage from './pages/dashboard/AssignTechniciansPage';
@@ -45,22 +47,56 @@ function App() {
 
       <Route
         path="/admin/tickets"
-        element={<AdminDashboard />}
+        element={
+          <ProtectedRoute roles={["ADMIN"]}>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/dashboard-new"
+        element={
+          <ProtectedRoute roles={["ADMIN"]}>
+            <AdminDashboardNew />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/admin/user-management"
+        element={
+          <ProtectedRoute roles={["ADMIN"]}>
+            <AdminUserManagement />
+          </ProtectedRoute>
+        }
       />
 
       <Route
         path="/admin/category-priority"
-        element={<CategoryPriorityDetailsPage />}
+        element={
+          <ProtectedRoute roles={["ADMIN"]}>
+            <CategoryPriorityDetailsPage />
+          </ProtectedRoute>
+        }
       />
 
       <Route
         path="/admin/bottom-details"
-        element={<AdminBottomDetailsPage />}
+        element={
+          <ProtectedRoute roles={["ADMIN"]}>
+            <AdminBottomDetailsPage />
+          </ProtectedRoute>
+        }
       />
 
       <Route
         path="/admin/assign-technicians"
-        element={<AssignTechniciansPage />}
+        element={
+          <ProtectedRoute roles={["ADMIN"]}>
+            <AssignTechniciansPage />
+          </ProtectedRoute>
+        }
       />
 
       {/* Module C - Maintenance & Incident Ticketing */}

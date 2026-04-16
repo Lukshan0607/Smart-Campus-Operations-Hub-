@@ -9,8 +9,8 @@ export default function OAuthSuccessPage() {
     if (token && user) {
       try {
         // Store token and user data in localStorage
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', user);
+        localStorage.setItem('sc_token', token);
+        localStorage.setItem('sc_user', user);
         
         // Redirect to home page
         window.location.href = '/';

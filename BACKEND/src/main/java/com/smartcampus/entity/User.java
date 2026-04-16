@@ -25,12 +25,17 @@ public class User {
     @Column(unique = true)
     private String email;
 
+    private String phone;
+
     private String password;
 
     private String picture;
 
     @Enumerated(EnumType.STRING)
     private Role role;
+
+    @Column(columnDefinition = "VARCHAR(20) DEFAULT 'Active'")
+    private String status;
 
     @Enumerated(EnumType.STRING)
     private AuthProvider provider;

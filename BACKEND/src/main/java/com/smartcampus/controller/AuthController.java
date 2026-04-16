@@ -65,8 +65,10 @@ public class AuthController {
                 .userId(userId)
                 .name(request.getName())
                 .email(request.getEmail())
+                .phone(request.getPhone())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.USER)
+                .status("Active")
                 .provider(AuthProvider.LOCAL)
                 .build();
 
@@ -97,10 +99,12 @@ public class AuthController {
             return Map.of("error", "Invalid email or password");
         }
 
-        // role check
-        if (user.getRole() != Role.USER) {
-            return Map.of("error", "Access denied");
+        // Check user status
+        if (!"Active".equals(user.getStatus())) {
+            return Map.of("error", "Account is deactivated. Please contact administrator.");
         }
+
+        // Allow all roles to login (USER, ADMIN, TECHNICIAN)
 
         // generate JWT
         String token = jwtUtil.generateToken(

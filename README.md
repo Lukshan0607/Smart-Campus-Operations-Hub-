@@ -302,3 +302,17 @@ Make sure controller has:
 
 ---
 
+INSERT INTO users (email, name, password, phone, picture, provider, role, status, user_id)
+VALUES (
+'admin@gmail.com',
+'System Admin',
+'$2a$10$examplehashedpassword',
+'0771234567',
+NULL,
+'LOCAL',
+'ADMIN',
+'Active',
+'USR0001'
+);
+
+password - admin123

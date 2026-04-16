@@ -45,6 +45,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                             .email(email)
                             .picture(picture)
                             .role(Role.USER)
+                            .status("Active")
                             .provider(AuthProvider.GOOGLE)
                             .build();
 

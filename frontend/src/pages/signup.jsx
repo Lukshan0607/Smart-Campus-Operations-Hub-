@@ -6,6 +6,7 @@ export default function SignupPage() {
   const [form, setForm] = useState({
     name: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: ""
   });
@@ -27,7 +28,7 @@ export default function SignupPage() {
       return;
     }
 
-    if (!form.name || !form.email || !form.password) {
+    if (!form.name || !form.email || !form.phone || !form.password) {
       setError("Please fill in all fields");
       return;
     }
@@ -38,7 +39,8 @@ export default function SignupPage() {
     try {
       console.log('Sending signup request:', {
         name: form.name,
-        email: form.email
+        email: form.email,
+        phone: form.phone
       });
 
       const response = await fetch("http://localhost:8083/auth/signup", {
@@ -49,6 +51,7 @@ export default function SignupPage() {
         body: JSON.stringify({
           name: form.name,
           email: form.email,
+          phone: form.phone,
           password: form.password
         })
       });
@@ -168,6 +171,15 @@ type="email"
 name="email"
 placeholder="Email Address"
 value={form.email}
+onChange={handleChange}
+className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+/>
+
+<input
+type="tel"
+name="phone"
+placeholder="Phone Number"
+value={form.phone}
 onChange={handleChange}
 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
 />

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
+import { defaultDashboardPath } from '../utils/auth';
 
 
 export default function LoginPage() {
@@ -113,19 +114,19 @@ export default function LoginPage() {
 
       // ✅ Save JWT token
 
-      localStorage.setItem("token", data.token);
+      localStorage.setItem("sc_token", data.token);
 
 
 
       // save user (optional)
 
-      localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("sc_user", JSON.stringify(data.user));
 
 
 
-      // redirect to home
+      // redirect to appropriate dashboard based on role
 
-      window.location.href = "/";
+      window.location.href = defaultDashboardPath();
 
     }
 
