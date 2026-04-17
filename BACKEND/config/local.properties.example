@@ -1,0 +1,10 @@
+# 1) Copy this file to: BACKEND/config/local.properties (same folder as this example).
+# 2) Set the password that actually works for MySQL user "root" on your PC.
+#
+# Your terminal showed:
+#   - (using password: YES) with root123 -> wrong password for your MySQL
+#   - (using password: NO) with empty -> your MySQL root requires a password
+#
+# Optional: you can override the whole URL here instead of only the password.
+spring.datasource.password=PUT_YOUR_MYSQL_ROOT_PASSWORD_HERE
+
