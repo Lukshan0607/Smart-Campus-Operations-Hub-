@@ -24,6 +24,8 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/oauth-success" element={<OAuthSuccess />} />
+      <Route path="/admin/dashboard-new" element={<AdminDashboardNew />} />
+      <Route path="/admin/user-management" element={<AdminUserManagement />} />
       
       <Route path="/dashboard" element={<Navigate to={defaultDashboardPath()} replace />} />
 
@@ -45,6 +47,8 @@ function App() {
         }
       />
 
+      
+
       <Route
         path="/admin/tickets"
         element={
@@ -54,23 +58,23 @@ function App() {
         }
       />
 
-      <Route
+      {/* <Route
         path="/admin/dashboard-new"
         element={
           <ProtectedRoute roles={["ADMIN"]}>
             <AdminDashboardNew />
           </ProtectedRoute>
         }
-      />
+      /> */}
 
-      <Route
+      {/* <Route
         path="/admin/user-management"
         element={
           <ProtectedRoute roles={["ADMIN"]}>
             <AdminUserManagement />
           </ProtectedRoute>
         }
-      />
+      /> */}
 
       <Route
         path="/admin/category-priority"
