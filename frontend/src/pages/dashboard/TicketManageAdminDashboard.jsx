@@ -102,9 +102,23 @@ const TicketManageAdminDashboard = () => {
   const saveDeadline = async (ticketId) => {
     const expectedCompletionAt = deadlineByTicket[ticketId];
     const warningMessage = warningByTicket[ticketId] || '';
+    const now = new Date();
+    const maxAllowed = new Date();
+    maxAllowed.setMonth(maxAllowed.getMonth() + 1);
 
     if (!expectedCompletionAt) {
       setError('Please select expected completion date and time');
+      return;
+    }
+
+    const selectedDate = new Date(expectedCompletionAt);
+    if (Number.isNaN(selectedDate.getTime()) || selectedDate <= now) {
+      setError('Please select an upcoming date and time');
+      return;
+    }
+
+    if (selectedDate > maxAllowed) {
+      setError('Deadline must be within one month from now');
       return;
     }
 
@@ -165,6 +179,16 @@ const TicketManageAdminDashboard = () => {
     return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
   };
 
+  const getDeadlineMinMax = () => {
+    const now = new Date();
+    const max = new Date();
+    max.setMonth(max.getMonth() + 1);
+    return {
+      min: toDateTimeLocalValue(now),
+      max: toDateTimeLocalValue(max),
+    };
+  };
+
   const toggleSection = (section) => {
     setExpandedSections((prev) => ({
       ...prev,
@@ -215,6 +239,17 @@ const TicketManageAdminDashboard = () => {
     return isWithinCurrentWeek(ticket.createdAt);
   };
 
+  const ticketHasTechnician = (ticket, technicianId) => {
+    if (!ticket || technicianId == null) return false;
+    if (Number(ticket.assignedTechnicianId) === Number(technicianId)) return true;
+    if (!ticket.additionalTechnicianIds) return false;
+    return String(ticket.additionalTechnicianIds)
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .some((value) => Number(value) === Number(technicianId));
+  };
+
   const periodLabel = chartPeriod === 'MONTH' ? 'This Month' : 'This Week';
   const periodTickets = tickets.filter(isInSelectedPeriod);
 
@@ -234,24 +269,31 @@ const TicketManageAdminDashboard = () => {
     .filter((item) => item.value > 0);
 
   const technicianProgressMap = periodTickets.reduce((acc, ticket) => {
-    if (!ticket.assignedTechnicianId && !ticket.assignedTechnicianName) return acc;
+    const techIds = [
+      ticket.assignedTechnicianId,
+      ...(ticket.additionalTechnicianIds ? String(ticket.additionalTechnicianIds).split(',').map((value) => value.trim()).filter(Boolean) : []),
+    ].filter(Boolean);
 
-    const idKey = ticket.assignedTechnicianId || `name:${ticket.assignedTechnicianName}`;
-    const name = ticket.assignedTechnicianName || `Technician #${ticket.assignedTechnicianId}`;
+    techIds.forEach((techId, index) => {
+      const name = index === 0
+        ? (ticket.assignedTechnicianName || `Technician #${techId}`)
+        : `Technician #${techId}`;
+      const idKey = String(techId);
 
-    if (!acc[idKey]) {
-      acc[idKey] = {
-        id: idKey,
-        name,
-        assigned: 0,
-        completed: 0,
-      };
-    }
+      if (!acc[idKey]) {
+        acc[idKey] = {
+          id: idKey,
+          name,
+          assigned: 0,
+          completed: 0,
+        };
+      }
 
-    acc[idKey].assigned += 1;
-    if (ticket.status === 'RESOLVED' || ticket.status === 'CLOSED') {
-      acc[idKey].completed += 1;
-    }
+      acc[idKey].assigned += 1;
+      if (ticket.status === 'RESOLVED' || ticket.status === 'CLOSED') {
+        acc[idKey].completed += 1;
+      }
+    });
 
     return acc;
   }, {});
@@ -291,7 +333,7 @@ const TicketManageAdminDashboard = () => {
 
   const selectedTechnicianJobs = selectedTechnicianId == null
     ? []
-    : tickets.filter((t) => Number(t.assignedTechnicianId) === Number(selectedTechnicianId));
+    : tickets.filter((t) => ticketHasTechnician(t, selectedTechnicianId));
 
   const selectedTechnicianWeeklyJobs = selectedTechnicianJobs.filter((t) => isWithinCurrentWeek(t.createdAt));
 
@@ -805,6 +847,10 @@ const TicketCard = ({
   const isOverdue = ticket.expectedCompletionAt && !isFinalStatus
     ? new Date(ticket.expectedCompletionAt).getTime() < Date.now()
     : false;
+  const additionalTechnicians = ticket.additionalTechnicianNames
+    ? String(ticket.additionalTechnicianNames).split(',').map((name) => name.trim()).filter(Boolean)
+    : [];
+  const isAlreadyAssigned = Boolean(ticket.assignedTechnicianId || ticket.assignedTechnicianName);
 
   return (
     <div className="border rounded-lg bg-white shadow-sm hover:shadow-md transition">
@@ -837,7 +883,13 @@ const TicketCard = ({
             <Info label="Category" value={formatCategoryDisplay(ticket.category, ticket.subCategory)} />
             <Info label="Priority" value={ticket.priority} />
             <Info label="Created By" value={`${ticket.creatorName || '-'} (${ticket.creatorId || '-'})`} />
-            <Info label="Assigned To" value={ticket.assignedTechnicianName || 'Unassigned'} />
+            <Info
+              label="Assigned To"
+              value={[
+                ticket.assignedTechnicianName || 'Unassigned',
+                ...additionalTechnicians,
+              ].filter(Boolean).join(' | ')}
+            />
             <Info label="Building" value={ticket.buildingName || '-'} />
             <Info label="Floor / Block / Room" value={`${ticket.floorNumber ?? '-'} / ${ticket.block || '-'} / ${ticket.roomNumber || '-'}`} />
             <Info label="Contact" value={ticket.contactPhone || '-'} />
@@ -928,14 +980,16 @@ const TicketCard = ({
 
           {/* Technician Assignment */}
           <div className="bg-white p-4 rounded border">
-            <p className="text-sm font-semibold text-gray-900 mb-3">Assign Technician</p>
+            <p className="text-sm font-semibold text-gray-900 mb-3">
+              {isAlreadyAssigned ? 'Add Another Technician' : 'Assign Technician'}
+            </p>
             <div className="flex gap-2 flex-wrap items-end">
               <select
                 value={selectedTech}
                 onChange={(e) => onTechChange(e.target.value)}
                 className="border rounded px-3 py-2 text-sm flex-1 min-w-48"
               >
-                <option value="">Select a technician...</option>
+                <option value="">{isAlreadyAssigned ? 'Select another technician...' : 'Select a technician...'}</option>
                 {technicians.map((tech) => (
                   <option key={tech.id} value={tech.id}>
                     {tech.displayName || tech.username} (#{tech.id})
@@ -947,7 +1001,7 @@ const TicketCard = ({
                 disabled={!selectedTech}
                 className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-semibold disabled:bg-gray-300 hover:bg-blue-700 transition"
               >
-                Assign
+                {isAlreadyAssigned ? 'Add Technician' : 'Assign'}
               </button>
             </div>
           </div>
@@ -961,6 +1015,8 @@ const TicketCard = ({
                   type="datetime-local"
                   value={deadlineValue || ''}
                   onChange={(e) => onDeadlineChange(e.target.value)}
+                  min={getDeadlineMinMax().min}
+                  max={getDeadlineMinMax().max}
                   className="w-full border rounded px-3 py-2 text-sm"
                 />
               </div>

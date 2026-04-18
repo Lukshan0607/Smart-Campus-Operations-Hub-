@@ -50,6 +50,10 @@ const TicketDetail = ({
     Number(ticket.assignedTechnicianId) > 0 &&
     String(ticket.assignedTechnicianName || '').toLowerCase() !== 'unassigned';
 
+  const additionalTechnicians = ticket.additionalTechnicianNames
+    ? String(ticket.additionalTechnicianNames).split(',').map((name) => name.trim()).filter(Boolean)
+    : [];
+
   const canSubmitImage =
     canEdit && ((ticket.status === 'OPEN' && !hasAssignedTechnician) || hasAssignedTechnician);
 
@@ -107,7 +111,9 @@ const TicketDetail = ({
         </div>
         <div>
           <p className="text-sm text-gray-500">Assigned To</p>
-          <p className="font-semibold text-gray-900">{ticket.assignedTechnicianName || 'Unassigned'}</p>
+          <p className="font-semibold text-gray-900">
+            {[ticket.assignedTechnicianName || 'Unassigned', ...additionalTechnicians].filter(Boolean).join(' | ')}
+          </p>
         </div>
       </div>
 

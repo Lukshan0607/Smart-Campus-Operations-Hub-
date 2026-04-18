@@ -19,6 +19,8 @@ const TicketManageAdminDashboard = () => {
   const [warningByTicket, setWarningByTicket] = useState({});
   const [expandedSections, setExpandedSections] = useState({});
   const [chartPeriod, setChartPeriod] = useState('WEEK');
+  const [reportPeriod, setReportPeriod] = useState('MONTH');
+  const [reportData, setReportData] = useState([]);
   const [selectedTechnicianId, setSelectedTechnicianId] = useState(null);
   const [activeTopView, setActiveTopView] = useState('OVERVIEW');
 
@@ -61,6 +63,23 @@ const TicketManageAdminDashboard = () => {
     loadTechnicians();
   }, []);
 
+  useEffect(() => {
+    const loadReports = async () => {
+      try {
+        const currentYear = new Date().getFullYear();
+        const res = reportPeriod === 'MONTH'
+          ? await ticketApi.getMonthlyReports(currentYear)
+          : await ticketApi.getYearlyReports();
+        setReportData(Array.isArray(res.data) ? res.data : []);
+      } catch (err) {
+        setReportData([]);
+        setError(err.response?.data?.message || 'Failed to load ticket reports');
+      }
+    };
+
+    loadReports();
+  }, [reportPeriod]);
+
   const assign = async (ticketId) => {
     const technicianId = selectedTechByTicket[ticketId];
     if (!technicianId) {
@@ -100,9 +119,23 @@ const TicketManageAdminDashboard = () => {
   const saveDeadline = async (ticketId) => {
     const expectedCompletionAt = deadlineByTicket[ticketId];
     const warningMessage = warningByTicket[ticketId] || '';
+    const now = new Date();
+    const maxAllowed = new Date();
+    maxAllowed.setMonth(maxAllowed.getMonth() + 1);
 
     if (!expectedCompletionAt) {
       setError('Please select expected completion date and time');
+      return;
+    }
+
+    const selectedDate = new Date(expectedCompletionAt);
+    if (Number.isNaN(selectedDate.getTime()) || selectedDate <= now) {
+      setError('Please select an upcoming date and time');
+      return;
+    }
+
+    if (selectedDate > maxAllowed) {
+      setError('Deadline must be within one month from now');
       return;
     }
 
@@ -163,6 +196,16 @@ const TicketManageAdminDashboard = () => {
     return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
   };
 
+  const getDeadlineMinMax = () => {
+    const now = new Date();
+    const max = new Date();
+    max.setMonth(max.getMonth() + 1);
+    return {
+      min: toDateTimeLocalValue(now),
+      max: toDateTimeLocalValue(max),
+    };
+  };
+
   const toggleSection = (section) => {
     setExpandedSections((prev) => ({
       ...prev,
@@ -213,6 +256,17 @@ const TicketManageAdminDashboard = () => {
     return isWithinCurrentWeek(ticket.createdAt);
   };
 
+  const ticketHasTechnician = (ticket, technicianId) => {
+    if (!ticket || technicianId == null) return false;
+    if (Number(ticket.assignedTechnicianId) === Number(technicianId)) return true;
+    if (!ticket.additionalTechnicianIds) return false;
+    return String(ticket.additionalTechnicianIds)
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .some((value) => Number(value) === Number(technicianId));
+  };
+
   const periodLabel = chartPeriod === 'MONTH' ? 'This Month' : 'This Week';
   const periodTickets = tickets.filter(isInSelectedPeriod);
 
@@ -232,24 +286,31 @@ const TicketManageAdminDashboard = () => {
     .filter((item) => item.value > 0);
 
   const technicianProgressMap = periodTickets.reduce((acc, ticket) => {
-    if (!ticket.assignedTechnicianId && !ticket.assignedTechnicianName) return acc;
+    const techIds = [
+      ticket.assignedTechnicianId,
+      ...(ticket.additionalTechnicianIds ? String(ticket.additionalTechnicianIds).split(',').map((value) => value.trim()).filter(Boolean) : []),
+    ].filter(Boolean);
 
-    const idKey = ticket.assignedTechnicianId || `name:${ticket.assignedTechnicianName}`;
-    const name = ticket.assignedTechnicianName || `Technician #${ticket.assignedTechnicianId}`;
+    techIds.forEach((techId, index) => {
+      const name = index === 0
+        ? (ticket.assignedTechnicianName || `Technician #${techId}`)
+        : `Technician #${techId}`;
+      const idKey = String(techId);
 
-    if (!acc[idKey]) {
-      acc[idKey] = {
-        id: idKey,
-        name,
-        assigned: 0,
-        completed: 0,
-      };
-    }
+      if (!acc[idKey]) {
+        acc[idKey] = {
+          id: idKey,
+          name,
+          assigned: 0,
+          completed: 0,
+        };
+      }
 
-    acc[idKey].assigned += 1;
-    if (ticket.status === 'RESOLVED' || ticket.status === 'CLOSED') {
-      acc[idKey].completed += 1;
-    }
+      acc[idKey].assigned += 1;
+      if (ticket.status === 'RESOLVED' || ticket.status === 'CLOSED') {
+        acc[idKey].completed += 1;
+      }
+    });
 
     return acc;
   }, {});
@@ -289,7 +350,7 @@ const TicketManageAdminDashboard = () => {
 
   const selectedTechnicianJobs = selectedTechnicianId == null
     ? []
-    : tickets.filter((t) => Number(t.assignedTechnicianId) === Number(selectedTechnicianId));
+    : tickets.filter((t) => ticketHasTechnician(t, selectedTechnicianId));
 
   const selectedTechnicianWeeklyJobs = selectedTechnicianJobs.filter((t) => isWithinCurrentWeek(t.createdAt));
 
@@ -315,6 +376,26 @@ const TicketManageAdminDashboard = () => {
   const selectedTechnician = selectedTechnicianId != null
     ? technicianDirectory[String(selectedTechnicianId)]
     : null;
+
+  const reportChartData = reportData.map((item, idx) => ({
+    label: item.periodLabel || item.periodKey || `Period ${idx + 1}`,
+    value: Number(item.totalTickets || 0),
+    color: CHART_COLORS[idx % CHART_COLORS.length],
+  }));
+
+  const reportTotals = reportData.reduce((acc, item) => {
+    acc.total += Number(item.totalTickets || 0);
+    acc.open += Number(item.openTickets || 0);
+    acc.inProgress += Number(item.inProgressTickets || 0);
+    acc.resolved += Number(item.resolvedTickets || 0);
+    acc.closed += Number(item.closedTickets || 0);
+    acc.rejected += Number(item.rejectedTickets || 0);
+    return acc;
+  }, { total: 0, open: 0, inProgress: 0, resolved: 0, closed: 0, rejected: 0 });
+
+  const reportTitle = reportPeriod === 'MONTH'
+    ? `Monthly Ticket Reports (${new Date().getFullYear()})`
+    : 'Yearly Ticket Reports';
 
   const handleSelectTechnician = (techId) => {
     setSelectedTechnicianId(techId);
@@ -432,14 +513,102 @@ const TicketManageAdminDashboard = () => {
           centerLabel={`${periodTickets.length}`}
           centerSubLabel={periodLabel}
         />
-        <PieChartCard
+        <LineChartCard
           title="Technician Progress Level"
-          subtitle={`${periodLabel} - Assigned workload and completion by technician`}
+          subtitle={`${periodLabel} - Completion percentage by technician`}
           data={technicianProgressData}
-          centerLabel={`${technicianProgressData.length}`}
-          centerSubLabel="Technicians"
-          showProgressPercent
+          xLabel="Technicians"
+          yLabel="Completion %"
         />
+      </div>
+
+      <div className="bg-white border rounded-lg p-4 shadow-sm mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-4">
+          <div>
+            <p className="text-lg font-semibold text-gray-900">{reportTitle}</p>
+            <p className="text-sm text-gray-600">SQL-backed monthly and yearly ticket totals from the tickets table.</p>
+          </div>
+          <div className="inline-flex rounded-lg border overflow-hidden w-fit">
+            <button
+              onClick={() => setReportPeriod('MONTH')}
+              className={`px-4 py-2 text-sm font-semibold ${reportPeriod === 'MONTH' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setReportPeriod('YEAR')}
+              className={`px-4 py-2 text-sm font-semibold border-l ${reportPeriod === 'YEAR' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+            >
+              Yearly
+            </button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+          <SummaryCard
+            title="Total Tickets"
+            value={reportTotals.total}
+            subtitle="Across selected period"
+            badgeClass="bg-slate-100 text-slate-700"
+          />
+          <SummaryCard
+            title="Resolved + Closed"
+            value={reportTotals.resolved + reportTotals.closed}
+            subtitle="Completed work items"
+            badgeClass="bg-green-100 text-green-700"
+          />
+          <SummaryCard
+            title="Open + In Progress"
+            value={reportTotals.open + reportTotals.inProgress}
+            subtitle="Outstanding work items"
+            badgeClass="bg-yellow-100 text-yellow-700"
+          />
+        </div>
+
+        <LineChartCard
+          title="Ticket Volume Trend"
+          subtitle="Count of created tickets per month or year"
+          data={reportChartData}
+          xLabel={reportPeriod === 'MONTH' ? 'Months' : 'Years'}
+          yLabel="Tickets"
+          valueKey="value"
+          valueSuffix=""
+        />
+
+        <div className="mt-4 overflow-x-auto">
+          <table className="min-w-full text-sm border">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="border px-3 py-2 text-left">Period</th>
+                <th className="border px-3 py-2 text-left">Total</th>
+                <th className="border px-3 py-2 text-left">Open</th>
+                <th className="border px-3 py-2 text-left">In Progress</th>
+                <th className="border px-3 py-2 text-left">Resolved</th>
+                <th className="border px-3 py-2 text-left">Closed</th>
+                <th className="border px-3 py-2 text-left">Rejected</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reportData.length > 0 ? reportData.map((row) => (
+                <tr key={row.periodKey} className="odd:bg-white even:bg-gray-50">
+                  <td className="border px-3 py-2">{row.periodLabel || row.periodKey}</td>
+                  <td className="border px-3 py-2">{row.totalTickets || 0}</td>
+                  <td className="border px-3 py-2">{row.openTickets || 0}</td>
+                  <td className="border px-3 py-2">{row.inProgressTickets || 0}</td>
+                  <td className="border px-3 py-2">{row.resolvedTickets || 0}</td>
+                  <td className="border px-3 py-2">{row.closedTickets || 0}</td>
+                  <td className="border px-3 py-2">{row.rejectedTickets || 0}</td>
+                </tr>
+              )) : (
+                <tr>
+                  <td className="border px-3 py-4 text-center text-gray-500" colSpan={7}>
+                    No report data available yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
       </>
       )}
@@ -519,7 +688,7 @@ const TicketManageAdminDashboard = () => {
         ) : (
           <div className="bg-white border rounded-lg p-6 shadow-sm mb-6">
             <p className="text-base font-semibold text-gray-900 mb-2">Technician Details</p>
-            <p className="text-sm text-gray-600">Select a technician from the top navigation to view assigned jobs and weekly progress pie chart.</p>
+            <p className="text-sm text-gray-600">Select a technician to view assigned jobs and weekly progress pie chart.</p>
           </div>
         )
       )}
@@ -607,12 +776,11 @@ const TicketManageAdminDashboard = () => {
 
       <div className="mt-8 bg-white border rounded-lg p-4 shadow-sm">
         <p className="text-base font-semibold text-gray-900">More Details Page</p>
-        <p className="text-sm text-gray-500 mt-1">Open another page for additional admin details and quick summary.</p>
         <button
           onClick={() => navigate('/admin/bottom-details')}
           className="mt-3 px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-semibold hover:bg-black"
         >
-          Go to Bottom Details Page
+          Go to more  Details Page
         </button>
       </div>
     </div>
@@ -729,6 +897,113 @@ const PieChartCard = ({
   );
 };
 
+const LineChartCard = ({
+  title,
+  subtitle,
+  data,
+  xLabel = 'Items',
+  yLabel = 'Value',
+  valueKey = 'progressPercent',
+  valueSuffix = '%',
+}) => {
+  if (!data.length) {
+    return (
+      <div className="bg-white border rounded-lg p-4 shadow-sm">
+        <p className="text-base font-semibold text-gray-900">{title}</p>
+        <p className="text-sm text-gray-500 mb-3">{subtitle}</p>
+        <div className="h-56 flex items-center justify-center text-sm text-gray-500 bg-gray-50 rounded border">
+          No data available
+        </div>
+      </div>
+    );
+  }
+
+  const values = data.map((item) => Number(item[valueKey] ?? 0));
+  const max = valueKey === 'progressPercent' ? Math.max(100, ...values) : Math.max(1, ...values);
+  const min = 0;
+  const width = 360;
+  const height = 220;
+  const padding = { top: 20, right: 24, bottom: 48, left: 36 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const stepX = data.length > 1 ? chartWidth / (data.length - 1) : 0;
+
+  const points = data.map((item, index) => {
+    const value = Number(item[valueKey] ?? 0);
+    const x = padding.left + (data.length > 1 ? index * stepX : chartWidth / 2);
+    const y = padding.top + chartHeight - ((value - min) / (max - min || 1)) * chartHeight;
+    return { ...item, value, x, y };
+  });
+
+  const linePoints = points.map((point) => `${point.x},${point.y}`).join(' ');
+  const ticks = valueKey === 'progressPercent'
+    ? [0, 25, 50, 75, 100]
+    : [0, Math.ceil(max / 4), Math.ceil(max / 2), Math.ceil((max * 3) / 4), max].filter((tick, index, array) => array.indexOf(tick) === index);
+
+  return (
+    <div className="bg-white border rounded-lg p-4 shadow-sm">
+      <p className="text-base font-semibold text-gray-900">{title}</p>
+      <p className="text-sm text-gray-500 mb-3">{subtitle}</p>
+
+      <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-3 items-center">
+        <div className="flex justify-center">
+          <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+            {ticks.map((tick) => {
+              const y = padding.top + chartHeight - ((tick - min) / (max - min || 1)) * chartHeight;
+              return (
+                <g key={tick}>
+                  <line x1={padding.left} y1={y} x2={width - padding.right} y2={y} stroke="#E5E7EB" strokeDasharray="4 4" />
+                  <text x={padding.left - 6} y={y + 4} textAnchor="end" className="fill-gray-500 text-[10px]">
+                    {tick}{valueSuffix}
+                  </text>
+                </g>
+              );
+            })}
+
+            <line x1={padding.left} y1={padding.top + chartHeight} x2={width - padding.right} y2={padding.top + chartHeight} stroke="#CBD5E1" />
+            <line x1={padding.left} y1={padding.top} x2={padding.left} y2={padding.top + chartHeight} stroke="#CBD5E1" />
+
+            <polyline fill="none" stroke="#2563EB" strokeWidth="3" points={linePoints} />
+
+            {points.map((point) => (
+              <g key={point.id}>
+                <circle cx={point.x} cy={point.y} r="4" fill="#2563EB" />
+                <text x={point.x} y={height - 16} textAnchor="middle" className="fill-gray-600 text-[10px]">
+                  {String(point.label).slice(0, 10)}
+                </text>
+                <text x={point.x} y={point.y - 8} textAnchor="middle" className="fill-gray-700 text-[10px] font-semibold">
+                  {point.value}{valueSuffix}
+                </text>
+              </g>
+            ))}
+          </svg>
+        </div>
+
+        <div className="space-y-2 max-h-56 overflow-auto pr-1">
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+            <span className="inline-block w-3 h-3 rounded-full bg-blue-600" />
+            <span>{xLabel} / {yLabel}</span>
+          </div>
+          {points.map((point) => (
+            <div key={point.id} className="flex items-center justify-between gap-2 text-sm">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-3 h-3 rounded-full inline-block bg-blue-600" />
+                <span className="text-gray-700 truncate">{point.label}</span>
+              </div>
+              <div className="text-right whitespace-nowrap">
+                <span className="font-semibold text-gray-900">{point.value}{valueSuffix}</span>
+                {typeof point.assigned === 'number' && (
+                  <span className="text-xs text-gray-500 ml-2">assigned {point.assigned}</span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
   const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180;
   return {
@@ -794,6 +1069,10 @@ const TicketCard = ({
   const isOverdue = ticket.expectedCompletionAt && !isFinalStatus
     ? new Date(ticket.expectedCompletionAt).getTime() < Date.now()
     : false;
+  const additionalTechnicians = ticket.additionalTechnicianNames
+    ? String(ticket.additionalTechnicianNames).split(',').map((name) => name.trim()).filter(Boolean)
+    : [];
+  const isAlreadyAssigned = Boolean(ticket.assignedTechnicianId || ticket.assignedTechnicianName);
 
   return (
     <div className="border rounded-lg bg-white shadow-sm hover:shadow-md transition">
@@ -826,7 +1105,13 @@ const TicketCard = ({
             <Info label="Category" value={formatCategoryDisplay(ticket.category, ticket.subCategory)} />
             <Info label="Priority" value={ticket.priority} />
             <Info label="Created By" value={`${ticket.creatorName || '-'} (${ticket.creatorId || '-'})`} />
-            <Info label="Assigned To" value={ticket.assignedTechnicianName || 'Unassigned'} />
+            <Info
+              label="Assigned To"
+              value={[
+                ticket.assignedTechnicianName || 'Unassigned',
+                ...additionalTechnicians,
+              ].filter(Boolean).join(' | ')}
+            />
             <Info label="Building" value={ticket.buildingName || '-'} />
             <Info label="Floor / Block / Room" value={`${ticket.floorNumber ?? '-'} / ${ticket.block || '-'} / ${ticket.roomNumber || '-'}`} />
             <Info label="Contact" value={ticket.contactPhone || '-'} />
@@ -917,14 +1202,16 @@ const TicketCard = ({
 
           {/* Technician Assignment */}
           <div className="bg-white p-4 rounded border">
-            <p className="text-sm font-semibold text-gray-900 mb-3">Assign Technician</p>
+            <p className="text-sm font-semibold text-gray-900 mb-3">
+              {isAlreadyAssigned ? 'Add Another Technician' : 'Assign Technician'}
+            </p>
             <div className="flex gap-2 flex-wrap items-end">
               <select
                 value={selectedTech}
                 onChange={(e) => onTechChange(e.target.value)}
                 className="border rounded px-3 py-2 text-sm flex-1 min-w-48"
               >
-                <option value="">Select a technician...</option>
+                <option value="">{isAlreadyAssigned ? 'Select another technician...' : 'Select a technician...'}</option>
                 {technicians.map((tech) => (
                   <option key={tech.id} value={tech.id}>
                     {tech.displayName || tech.username} (#{tech.id})
@@ -936,7 +1223,7 @@ const TicketCard = ({
                 disabled={!selectedTech}
                 className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-semibold disabled:bg-gray-300 hover:bg-blue-700 transition"
               >
-                Assign
+                {isAlreadyAssigned ? 'Add Technician' : 'Assign'}
               </button>
             </div>
           </div>
@@ -950,6 +1237,8 @@ const TicketCard = ({
                   type="datetime-local"
                   value={deadlineValue || ''}
                   onChange={(e) => onDeadlineChange(e.target.value)}
+                  min={getDeadlineMinMax().min}
+                  max={getDeadlineMinMax().max}
                   className="w-full border rounded px-3 py-2 text-sm"
                 />
               </div>

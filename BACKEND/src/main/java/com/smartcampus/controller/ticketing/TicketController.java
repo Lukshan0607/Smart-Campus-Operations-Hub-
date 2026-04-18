@@ -2,6 +2,7 @@ package com.smartcampus.controller.ticketing;
 
 import com.smartcampus.dto.ticketing.AttachmentDTO;
 import com.smartcampus.dto.ticketing.TicketRequestDTO;
+import com.smartcampus.dto.ticketing.TicketReportDTO;
 import com.smartcampus.dto.ticketing.TicketResponseDTO;
 import com.smartcampus.entity.TicketStatus;
 import com.smartcampus.service.ticketing.AttachmentService;
@@ -86,6 +87,16 @@ public class TicketController {
     @GetMapping("/my")
     public ResponseEntity<List<TicketResponseDTO>> myTickets() {
         return ResponseEntity.ok(ticketService.listMyTickets());
+    }
+
+    @GetMapping("/reports/monthly")
+    public ResponseEntity<List<TicketReportDTO>> monthlyReports(@RequestParam(required = false) Integer year) {
+        return ResponseEntity.ok(ticketService.getMonthlyReports(year));
+    }
+
+    @GetMapping("/reports/yearly")
+    public ResponseEntity<List<TicketReportDTO>> yearlyReports() {
+        return ResponseEntity.ok(ticketService.getYearlyReports());
     }
 
     /**

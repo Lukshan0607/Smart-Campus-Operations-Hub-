@@ -16,12 +16,18 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.Year;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -32,6 +38,7 @@ public class TicketService {
     private final NotificationService notificationService;
     private final AttachmentService attachmentService;
     private final UserRepository userRepository;
+    private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     public TicketResponseDTO createTicket(TicketRequestDTO request, String username) {
         validateLocation(request);
@@ -123,6 +130,8 @@ public class TicketService {
         String creatorName = ticket.getCreatorName();
         Long technicianId = ticket.getAssignedTechnicianId();
         String technicianName = ticket.getAssignedTechnicianName();
+        List<Long> additionalTechnicianIds = parseTechnicianIds(ticket.getAdditionalTechnicianIds());
+        List<String> additionalTechnicianNames = parseTechnicianNames(ticket.getAdditionalTechnicianNames());
 
         attachmentService.deleteAttachmentsByTicketId(id);
         ticketRepository.delete(ticket);
@@ -149,6 +158,13 @@ public class TicketService {
             );
         }
 
+        for (int i = 0; i < additionalTechnicianIds.size(); i++) {
+            Long extraId = additionalTechnicianIds.get(i);
+            String extraName = i < additionalTechnicianNames.size() ? additionalTechnicianNames.get(i) : "technician";
+            notificationService.create(extraId, extraName,
+                "Ticket deleted", "Ticket #" + id + " was deleted by " + username + ".");
+        }
+
         notifyAllAdmins(
             "Ticket deleted by submitter",
             "Ticket #" + id + " was deleted by the submitter " + username + "."
@@ -161,8 +177,7 @@ public class TicketService {
 
         boolean isAdmin = hasRole("ADMIN");
         boolean isOwner = ticket.getCreatorId().equals(extractUserIdFromContext());
-        boolean isAssigned = ticket.getAssignedTechnicianId() != null && 
-                            ticket.getAssignedTechnicianId().equals(extractUserIdFromContext());
+        boolean isAssigned = isTechnicianAssignedToTicket(ticket, extractUserIdFromContext());
 
         if (!isAdmin && !isOwner && !isAssigned) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied to this ticket");
@@ -182,7 +197,10 @@ public class TicketService {
 
     public List<TicketResponseDTO> listTechnicianJobs() {
         Long userId = extractUserIdFromContext();
-        return ticketRepository.findByAssignedTechnicianId(userId).stream().map(this::mapToDTO).collect(Collectors.toList());
+        return ticketRepository.findAll().stream()
+                .filter(ticket -> isTechnicianAssignedToTicket(ticket, userId))
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
     }
 
     public List<TicketResponseDTO> listAdminTickets(TicketStatus status, String priority, String category) {
@@ -224,16 +242,34 @@ public class TicketService {
 
         String technicianDisplayName = resolveTechnicianDisplayName(technicianId);
 
-        ticket.setAssignedTechnicianId(technicianId);
-        ticket.setAssignedTechnicianName(technicianDisplayName);
-        ticket.setStatus(TicketStatus.IN_PROGRESS);
+        if (ticket.getAssignedTechnicianId() == null) {
+            ticket.setAssignedTechnicianId(technicianId);
+            ticket.setAssignedTechnicianName(technicianDisplayName);
+            ticket.setStatus(TicketStatus.IN_PROGRESS);
+
+            Ticket updated = ticketRepository.save(ticket);
+
+            notificationService.create(technicianId, technicianDisplayName,
+                "New assigned ticket", "Ticket #" + ticket.getId() + " assigned to you.");
+            notificationService.create(ticket.getCreatorId(), ticket.getCreatorName(),
+                "Technician assigned", "A technician was assigned to ticket #" + ticket.getId() + ".");
+
+            return mapToDTO(updated);
+        }
+
+        if (ticket.getAssignedTechnicianId().equals(technicianId) || isTechnicianAlreadyAdded(ticket, technicianId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Technician is already assigned to this ticket");
+        }
+
+        ticket.setAdditionalTechnicianIds(appendCsvValue(ticket.getAdditionalTechnicianIds(), String.valueOf(technicianId)));
+        ticket.setAdditionalTechnicianNames(appendCsvValue(ticket.getAdditionalTechnicianNames(), technicianDisplayName));
 
         Ticket updated = ticketRepository.save(ticket);
 
         notificationService.create(technicianId, technicianDisplayName,
-                "New assigned ticket", "Ticket #" + ticket.getId() + " assigned to you.");
+            "Additional technician assigned", "You were added to ticket #" + ticket.getId() + " as an additional technician.");
         notificationService.create(ticket.getCreatorId(), ticket.getCreatorName(),
-                "Technician assigned", "A technician was assigned to ticket #" + ticket.getId() + ".");
+            "Additional technician assigned", "An additional technician was added to ticket #" + ticket.getId() + ".");
 
         return mapToDTO(updated);
     }
@@ -243,7 +279,7 @@ public class TicketService {
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + id));
 
         Long userId = extractUserIdFromContext();
-        if (ticket.getAssignedTechnicianId() != null && !ticket.getAssignedTechnicianId().equals(userId)) {
+        if (!isTechnicianAssignedToTicket(ticket, userId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only assigned technician can complete this ticket");
         }
 
@@ -257,6 +293,9 @@ public class TicketService {
                 "Ticket resolved", "Ticket #" + ticket.getId() + " was marked resolved.");
         notificationService.create(999L, "admin", "Ticket resolved",
                 "Ticket #" + ticket.getId() + " is awaiting closure.");
+        notifyAdditionalTechnicians(ticket, "Ticket resolved", "Ticket #" + ticket.getId() + " was marked resolved.");
+        notifyAdditionalTechnicians(ticket, "Ticket resolved",
+            "Ticket #" + ticket.getId() + " was marked resolved.");
 
         return mapToDTO(updated);
     }
@@ -331,6 +370,11 @@ public class TicketService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Expected completion time must be in the future");
         }
 
+        LocalDateTime maxAllowed = LocalDateTime.now().plusMonths(1);
+        if (expectedCompletionAt != null && expectedCompletionAt.isAfter(maxAllowed)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Expected completion time must be within one month from now");
+        }
+
         ticket.setExpectedCompletionAt(expectedCompletionAt);
         ticket.setWarningMessage(warningMessage != null && !warningMessage.isBlank() ? warningMessage.trim() : null);
 
@@ -345,7 +389,84 @@ public class TicketService {
             );
         }
 
+        notifyAdditionalTechnicians(ticket,
+            "Deadline updated",
+            "Deadline for ticket #" + ticket.getId() + " is set to " + expectedCompletionAt + ".");
+
+        notifyAdditionalTechnicians(ticket, "Deadline updated",
+            "Deadline for ticket #" + ticket.getId() + " is set to " + expectedCompletionAt + ".");
+
         return mapToDTO(updated);
+    }
+
+    public List<com.smartcampus.dto.ticketing.TicketReportDTO> getMonthlyReports(Integer year) {
+        int targetYear = year != null ? year : Year.now().getValue();
+        String sql = """
+            SELECT
+                DATE_FORMAT(t.created_at, '%Y-%m') AS periodKey,
+                DATE_FORMAT(t.created_at, '%b %Y') AS periodLabel,
+                COUNT(*) AS totalTickets,
+                SUM(CASE WHEN t.status = 'OPEN' THEN 1 ELSE 0 END) AS openTickets,
+                SUM(CASE WHEN t.status = 'IN_PROGRESS' THEN 1 ELSE 0 END) AS inProgressTickets,
+                SUM(CASE WHEN t.status = 'RESOLVED' THEN 1 ELSE 0 END) AS resolvedTickets,
+                SUM(CASE WHEN t.status = 'CLOSED' THEN 1 ELSE 0 END) AS closedTickets,
+                SUM(CASE WHEN t.status = 'REJECTED' THEN 1 ELSE 0 END) AS rejectedTickets
+            FROM tickets t
+            WHERE YEAR(t.created_at) = :year
+            GROUP BY DATE_FORMAT(t.created_at, '%Y-%m'), DATE_FORMAT(t.created_at, '%b %Y')
+            ORDER BY periodKey
+            """;
+
+        return namedParameterJdbcTemplate.query(
+                sql,
+                new MapSqlParameterSource("year", targetYear),
+                (rs, rowNum) -> new com.smartcampus.dto.ticketing.TicketReportDTO(
+                    rs.getString("periodKey"),
+                    rs.getString("periodLabel"),
+                    rs.getLong("totalTickets"),
+                    rs.getLong("openTickets"),
+                    rs.getLong("inProgressTickets"),
+                    rs.getLong("resolvedTickets"),
+                    rs.getLong("closedTickets"),
+                    rs.getLong("rejectedTickets")
+                )
+            )
+            .stream()
+                .collect(Collectors.toList());
+    }
+
+    public List<com.smartcampus.dto.ticketing.TicketReportDTO> getYearlyReports() {
+        String sql = """
+            SELECT
+                CAST(YEAR(t.created_at) AS CHAR) AS periodKey,
+                CAST(YEAR(t.created_at) AS CHAR) AS periodLabel,
+                COUNT(*) AS totalTickets,
+                SUM(CASE WHEN t.status = 'OPEN' THEN 1 ELSE 0 END) AS openTickets,
+                SUM(CASE WHEN t.status = 'IN_PROGRESS' THEN 1 ELSE 0 END) AS inProgressTickets,
+                SUM(CASE WHEN t.status = 'RESOLVED' THEN 1 ELSE 0 END) AS resolvedTickets,
+                SUM(CASE WHEN t.status = 'CLOSED' THEN 1 ELSE 0 END) AS closedTickets,
+                SUM(CASE WHEN t.status = 'REJECTED' THEN 1 ELSE 0 END) AS rejectedTickets
+            FROM tickets t
+            GROUP BY YEAR(t.created_at)
+            ORDER BY YEAR(t.created_at)
+            """;
+
+        return namedParameterJdbcTemplate.query(
+                sql,
+                new MapSqlParameterSource(),
+                (rs, rowNum) -> new com.smartcampus.dto.ticketing.TicketReportDTO(
+                    rs.getString("periodKey"),
+                    rs.getString("periodLabel"),
+                    rs.getLong("totalTickets"),
+                    rs.getLong("openTickets"),
+                    rs.getLong("inProgressTickets"),
+                    rs.getLong("resolvedTickets"),
+                    rs.getLong("closedTickets"),
+                    rs.getLong("rejectedTickets")
+                )
+            )
+            .stream()
+                .collect(Collectors.toList());
     }
 
     private TicketResponseDTO mapToDTO(Ticket ticket) {
@@ -370,6 +491,8 @@ public class TicketService {
         dto.setCreatorName(ticket.getCreatorName());
         dto.setAssignedTechnicianId(ticket.getAssignedTechnicianId());
         dto.setAssignedTechnicianName(ticket.getAssignedTechnicianName());
+        dto.setAdditionalTechnicianIds(ticket.getAdditionalTechnicianIds());
+        dto.setAdditionalTechnicianNames(ticket.getAdditionalTechnicianNames());
         dto.setResolutionNote(ticket.getResolutionNote());
         dto.setCompletionNotes(ticket.getCompletionNotes());
         dto.setRejectionReason(ticket.getRejectionReason());
@@ -441,6 +564,82 @@ public class TicketService {
             case "lecturer1" -> 10L;
             default -> null;
         };
+    }
+
+    private boolean isTechnicianAssignedToTicket(Ticket ticket, Long technicianId) {
+        if (ticket == null || technicianId == null) {
+            return false;
+        }
+
+        if (ticket.getAssignedTechnicianId() != null && ticket.getAssignedTechnicianId().equals(technicianId)) {
+            return true;
+        }
+
+        return parseTechnicianIds(ticket.getAdditionalTechnicianIds()).contains(technicianId);
+    }
+
+    private boolean isTechnicianAlreadyAdded(Ticket ticket, Long technicianId) {
+        return parseTechnicianIds(ticket.getAdditionalTechnicianIds()).contains(technicianId);
+    }
+
+    private List<Long> parseTechnicianIds(String raw) {
+        List<Long> ids = new ArrayList<>();
+        if (raw == null || raw.isBlank()) {
+            return ids;
+        }
+
+        for (String part : raw.split(",")) {
+            String trimmed = part.trim();
+            if (trimmed.isBlank()) continue;
+            try {
+                ids.add(Long.parseLong(trimmed));
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return ids;
+    }
+
+    private List<String> parseTechnicianNames(String raw) {
+        List<String> names = new ArrayList<>();
+        if (raw == null || raw.isBlank()) {
+            return names;
+        }
+
+        for (String part : raw.split(",")) {
+            String trimmed = part.trim();
+            if (!trimmed.isBlank()) {
+                names.add(trimmed);
+            }
+        }
+        return names;
+    }
+
+    private String appendCsvValue(String raw, String value) {
+        if (value == null || value.isBlank()) {
+            return raw;
+        }
+
+        Set<String> values = new LinkedHashSet<>();
+        if (raw != null && !raw.isBlank()) {
+            for (String part : raw.split(",")) {
+                String trimmed = part.trim();
+                if (!trimmed.isBlank()) {
+                    values.add(trimmed);
+                }
+            }
+        }
+        values.add(value.trim());
+        return String.join(",", values);
+    }
+
+    private void notifyAdditionalTechnicians(Ticket ticket, String title, String message) {
+        List<Long> ids = parseTechnicianIds(ticket.getAdditionalTechnicianIds());
+        List<String> names = parseTechnicianNames(ticket.getAdditionalTechnicianNames());
+        for (int i = 0; i < ids.size(); i++) {
+            Long techId = ids.get(i);
+            String techName = i < names.size() ? names.get(i) : "technician";
+            notificationService.create(techId, techName, title, message);
+        }
     }
 
     private String resolveTechnicianDisplayName(Long technicianId) {

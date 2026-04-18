@@ -76,6 +76,17 @@ const ticketApi = {
     return axios.get(`${API_BASE}/tickets/technician/my-jobs`);
   },
 
+  getMonthlyReports: (year) => {
+    applyAuthHeader();
+    const query = year ? `?year=${encodeURIComponent(year)}` : '';
+    return axios.get(`${API_BASE}/tickets/reports/monthly${query}`);
+  },
+
+  getYearlyReports: () => {
+    applyAuthHeader();
+    return axios.get(`${API_BASE}/tickets/reports/yearly`);
+  },
+
   // 3) PATCH /api/tickets/{id}/status
   updateTicketStatus: (id, status, resolutionNote) => {
     applyAuthHeader();
