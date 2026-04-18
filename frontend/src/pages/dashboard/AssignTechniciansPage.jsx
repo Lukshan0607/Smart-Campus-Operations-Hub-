@@ -79,6 +79,14 @@ const AssignTechniciansPage = () => {
     }));
   };
 
+  const parseCsvValues = (value) => {
+    if (!value) return [];
+    return String(value)
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  };
+
   const filteredTickets = tickets.filter((ticket) => ticket.status === filterStatus);
 
   return (
@@ -144,6 +152,18 @@ const AssignTechniciansPage = () => {
           <div className="space-y-4">
             {filteredTickets.map((ticket) => (
               <div key={ticket.id} className="bg-white border rounded-lg p-5 shadow-sm hover:shadow-md transition">
+                {(() => {
+                  const additionalNames = parseCsvValues(ticket.additionalTechnicianNames);
+                  const additionalIds = parseCsvValues(ticket.additionalTechnicianIds);
+                  const isFinalStatus = ['RESOLVED', 'CLOSED', 'REJECTED'].includes(ticket.status);
+                  const isPrimaryAssigned = Boolean(ticket.assignedTechnicianId || ticket.assignedTechnicianName);
+                  const alreadyAssignedIds = new Set([
+                    ...(ticket.assignedTechnicianId != null ? [String(ticket.assignedTechnicianId)] : []),
+                    ...additionalIds,
+                  ]);
+                  const availableTechnicians = technicians.filter((tech) => !alreadyAssignedIds.has(String(tech.id)));
+
+                  return (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start mb-4">
                   {/* Ticket Info */}
                   <div>
@@ -166,41 +186,63 @@ const AssignTechniciansPage = () => {
 
                   {/* Assignment Section */}
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                    <p className="text-sm font-semibold text-gray-700 mb-3">
-                      Current Assignee: <span className="text-blue-600">{ticket.assignedTechnicianName || 'Unassigned'}</span>
+                    <p className="text-sm font-semibold text-gray-700 mb-2">
+                      Primary Assignee: <span className="text-blue-600">{ticket.assignedTechnicianName || 'Unassigned'}</span>
                     </p>
+                    <p className="text-xs text-gray-500 mb-3">Primary technician cannot be replaced from this page. You can add another technician.</p>
+
+                    <div className="mb-3 text-sm text-gray-700">
+                      <p className="font-semibold mb-1">All Assigned Technicians</p>
+                      <ul className="list-disc list-inside space-y-1">
+                        <li>{ticket.assignedTechnicianName || 'Unassigned'}</li>
+                        {additionalNames.map((name, index) => (
+                          <li key={`${ticket.id}-extra-${index}`}>{name}</li>
+                        ))}
+                      </ul>
+                    </div>
 
                     <div className="space-y-3">
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Select Technician</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          {isPrimaryAssigned ? 'Add Another Technician' : 'Assign Technician'}
+                        </label>
                         <select
                           value={selectedTechByTicket[ticket.id] || ''}
                           onChange={(e) => handleTechnicianChange(ticket.id, e.target.value)}
+                          disabled={isFinalStatus}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                         >
                           <option value="">-- Choose a technician --</option>
-                          {technicians.map((tech) => (
+                          {availableTechnicians.map((tech) => (
                             <option key={tech.id} value={tech.id}>
                               {tech.displayName || tech.username || `Technician #${tech.id}`} (#{tech.id})
                             </option>
                           ))}
                         </select>
+                        {availableTechnicians.length === 0 && !isFinalStatus && (
+                          <p className="text-xs text-gray-500 mt-2">All technicians are already assigned for this ticket.</p>
+                        )}
+                        {isFinalStatus && (
+                          <p className="text-xs text-gray-500 mt-2">Ticket is in final state. Technician assignment is locked.</p>
+                        )}
                       </div>
 
                       <button
                         onClick={() => assign(ticket.id)}
-                        disabled={!selectedTechByTicket[ticket.id]}
+                        disabled={!selectedTechByTicket[ticket.id] || availableTechnicians.length === 0 || isFinalStatus}
                         className={`w-full px-4 py-2 rounded-lg font-semibold transition text-white ${
-                          selectedTechByTicket[ticket.id]
+                          selectedTechByTicket[ticket.id] && availableTechnicians.length > 0 && !isFinalStatus
                             ? 'bg-green-600 hover:bg-green-700'
                             : 'bg-gray-400 cursor-not-allowed'
                         }`}
                       >
-                        Assign Technician
+                        {isPrimaryAssigned ? 'Add Technician' : 'Assign Technician'}
                       </button>
                     </div>
                   </div>
                 </div>
+                  );
+                })()}
               </div>
             ))}
           </div>

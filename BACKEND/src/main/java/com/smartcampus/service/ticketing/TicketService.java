@@ -240,6 +240,13 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + id));
 
+        if (ticket.getStatus() == TicketStatus.RESOLVED
+            || ticket.getStatus() == TicketStatus.CLOSED
+            || ticket.getStatus() == TicketStatus.REJECTED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Cannot assign technicians when ticket is RESOLVED, CLOSED, or REJECTED");
+        }
+
         String technicianDisplayName = resolveTechnicianDisplayName(technicianId);
 
         if (ticket.getAssignedTechnicianId() == null) {

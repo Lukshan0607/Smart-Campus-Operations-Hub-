@@ -35,6 +35,46 @@ const TicketManageAdminDashboard = () => {
 
   const CHART_COLORS = ['#3B82F6', '#F59E0B', '#10B981', '#6B7280', '#EF4444', '#8B5CF6', '#14B8A6', '#F97316'];
 
+  const buildFallbackReportData = (period) => {
+    const grouped = tickets.reduce((acc, ticket) => {
+      if (!ticket?.createdAt) return acc;
+      const createdAt = new Date(ticket.createdAt);
+      if (Number.isNaN(createdAt.getTime())) return acc;
+
+      const key = period === 'MONTH'
+        ? `${createdAt.getFullYear()}-${String(createdAt.getMonth() + 1).padStart(2, '0')}`
+        : `${createdAt.getFullYear()}`;
+
+      const label = period === 'MONTH'
+        ? createdAt.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+        : `${createdAt.getFullYear()}`;
+
+      if (!acc[key]) {
+        acc[key] = {
+          periodKey: key,
+          periodLabel: label,
+          totalTickets: 0,
+          openTickets: 0,
+          inProgressTickets: 0,
+          resolvedTickets: 0,
+          closedTickets: 0,
+          rejectedTickets: 0,
+        };
+      }
+
+      acc[key].totalTickets += 1;
+      if (ticket.status === 'OPEN') acc[key].openTickets += 1;
+      if (ticket.status === 'IN_PROGRESS') acc[key].inProgressTickets += 1;
+      if (ticket.status === 'RESOLVED') acc[key].resolvedTickets += 1;
+      if (ticket.status === 'CLOSED') acc[key].closedTickets += 1;
+      if (ticket.status === 'REJECTED') acc[key].rejectedTickets += 1;
+
+      return acc;
+    }, {});
+
+    return Object.values(grouped).sort((a, b) => String(a.periodKey).localeCompare(String(b.periodKey)));
+  };
+
   const load = async () => {
     setLoading(true);
     try {
@@ -70,15 +110,20 @@ const TicketManageAdminDashboard = () => {
         const res = reportPeriod === 'MONTH'
           ? await ticketApi.getMonthlyReports(currentYear)
           : await ticketApi.getYearlyReports();
-        setReportData(Array.isArray(res.data) ? res.data : []);
+        const apiRows = Array.isArray(res.data) ? res.data : [];
+        if (apiRows.length > 0) {
+          setReportData(apiRows);
+          return;
+        }
+        setReportData(buildFallbackReportData(reportPeriod));
       } catch (err) {
-        setReportData([]);
-        setError(err.response?.data?.message || 'Failed to load ticket reports');
+        setReportData(buildFallbackReportData(reportPeriod));
+        setError(err.response?.data?.message || 'Failed to load ticket reports (showing fallback data)');
       }
     };
 
     loadReports();
-  }, [reportPeriod]);
+  }, [reportPeriod, tickets]);
 
   const assign = async (ticketId) => {
     const technicianId = selectedTechByTicket[ticketId];
@@ -609,6 +654,48 @@ const TicketManageAdminDashboard = () => {
             </tbody>
           </table>
         </div>
+
+        <div className="mt-4 border-t pt-4">
+          <p className="text-sm font-semibold text-gray-700 mb-2">Admin Quick Navigation</p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => navigate('/admin/tickets')}
+              className="px-3 py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700"
+            >
+              Tickets Dashboard
+            </button>
+            <button
+              onClick={() => navigate('/admin/assign-technicians')}
+              className="px-3 py-2 rounded-lg text-sm font-semibold bg-white border text-gray-700 hover:bg-gray-50"
+            >
+              Assign Technicians
+            </button>
+            <button
+              onClick={() => navigate('/admin/category-priority')}
+              className="px-3 py-2 rounded-lg text-sm font-semibold bg-white border text-gray-700 hover:bg-gray-50"
+            >
+              Category & Priority
+            </button>
+            <button
+              onClick={() => navigate('/admin/bottom-details')}
+              className="px-3 py-2 rounded-lg text-sm font-semibold bg-white border text-gray-700 hover:bg-gray-50"
+            >
+              More Details
+            </button>
+            <button
+              onClick={() => navigate('/admin/dashboard-new')}
+              className="px-3 py-2 rounded-lg text-sm font-semibold bg-white border text-gray-700 hover:bg-gray-50"
+            >
+              Admin Dashboard New
+            </button>
+            <button
+              onClick={() => navigate('/admin/user-management')}
+              className="px-3 py-2 rounded-lg text-sm font-semibold bg-white border text-gray-700 hover:bg-gray-50"
+            >
+              User Management
+            </button>
+          </div>
+        </div>
       </div>
       </>
       )}
@@ -1066,6 +1153,7 @@ const TicketCard = ({
 
   const allowedNextStatuses = statusTransitions[ticket.status] || [];
   const isFinalStatus = ['RESOLVED', 'CLOSED', 'REJECTED'].includes(ticket.status);
+  const canEditTicket = !isFinalStatus;
   const isOverdue = ticket.expectedCompletionAt && !isFinalStatus
     ? new Date(ticket.expectedCompletionAt).getTime() < Date.now()
     : false;
@@ -1073,6 +1161,24 @@ const TicketCard = ({
     ? String(ticket.additionalTechnicianNames).split(',').map((name) => name.trim()).filter(Boolean)
     : [];
   const isAlreadyAssigned = Boolean(ticket.assignedTechnicianId || ticket.assignedTechnicianName);
+
+  const toDateTimeLocalValue = (dateValue) => {
+    if (!dateValue) return '';
+    const dt = new Date(dateValue);
+    if (Number.isNaN(dt.getTime())) return '';
+    const pad = (num) => String(num).padStart(2, '0');
+    return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+  };
+
+  const deadlineMinMax = (() => {
+    const now = new Date();
+    const max = new Date();
+    max.setMonth(max.getMonth() + 1);
+    return {
+      min: toDateTimeLocalValue(now),
+      max: toDateTimeLocalValue(max),
+    };
+  })();
 
   return (
     <div className="border rounded-lg bg-white shadow-sm hover:shadow-md transition">
@@ -1209,6 +1315,7 @@ const TicketCard = ({
               <select
                 value={selectedTech}
                 onChange={(e) => onTechChange(e.target.value)}
+                disabled={!canEditTicket}
                 className="border rounded px-3 py-2 text-sm flex-1 min-w-48"
               >
                 <option value="">{isAlreadyAssigned ? 'Select another technician...' : 'Select a technician...'}</option>
@@ -1220,12 +1327,15 @@ const TicketCard = ({
               </select>
               <button
                 onClick={onAssign}
-                disabled={!selectedTech}
+                disabled={!selectedTech || !canEditTicket}
                 className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-semibold disabled:bg-gray-300 hover:bg-blue-700 transition"
               >
                 {isAlreadyAssigned ? 'Add Technician' : 'Assign'}
               </button>
             </div>
+            {!canEditTicket && (
+              <p className="mt-2 text-xs text-gray-500">Cannot assign technicians for RESOLVED, CLOSED, or REJECTED tickets.</p>
+            )}
           </div>
 
           <div className="bg-white p-4 rounded border">
@@ -1237,8 +1347,9 @@ const TicketCard = ({
                   type="datetime-local"
                   value={deadlineValue || ''}
                   onChange={(e) => onDeadlineChange(e.target.value)}
-                  min={getDeadlineMinMax().min}
-                  max={getDeadlineMinMax().max}
+                  disabled={!canEditTicket}
+                  min={deadlineMinMax.min}
+                  max={deadlineMinMax.max}
                   className="w-full border rounded px-3 py-2 text-sm"
                 />
               </div>
@@ -1248,6 +1359,7 @@ const TicketCard = ({
                   type="text"
                   value={warningValue || ''}
                   onChange={(e) => onWarningChange(e.target.value)}
+                  disabled={!canEditTicket}
                   className="w-full border rounded px-3 py-2 text-sm"
                   placeholder="Example: Complete before class starts at 9 AM"
                 />
@@ -1255,6 +1367,7 @@ const TicketCard = ({
             </div>
             <button
               onClick={onSaveDeadline}
+              disabled={!canEditTicket}
               className="mt-3 px-4 py-2 rounded bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
             >
               Save Deadline
