@@ -1306,32 +1306,41 @@ const TicketCard = ({
           )}
 
           {/* Technician Assignment */}
-          <div className="bg-white p-4 rounded border">
-            <p className="text-sm font-semibold text-gray-900 mb-3">
-              {isAlreadyAssigned ? 'Add Another Technician' : 'Assign Technician'}
-            </p>
-            <div className="flex gap-2 flex-wrap items-end">
-              <select
-                value={selectedTech}
-                onChange={(e) => onTechChange(e.target.value)}
-                className="border rounded px-3 py-2 text-sm flex-1 min-w-48"
-              >
-                <option value="">{isAlreadyAssigned ? 'Select another technician...' : 'Select a technician...'}</option>
-                {technicians.map((tech) => (
-                  <option key={tech.id} value={tech.id}>
-                    {tech.displayName || tech.username} (#{tech.id})
-                  </option>
-                ))}
-              </select>
-              <button
-                onClick={onAssign}
-                disabled={!selectedTech}
-                className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-semibold disabled:bg-gray-300 hover:bg-blue-700 transition"
-              >
-                {isAlreadyAssigned ? 'Add Technician' : 'Assign'}
-              </button>
+          {!isFinalStatus && (
+            <div className="bg-white p-4 rounded border">
+              <p className="text-sm font-semibold text-gray-900 mb-3">
+                {isAlreadyAssigned ? 'Add Another Technician' : 'Assign Technician'}
+              </p>
+              <div className="flex gap-2 flex-wrap items-end">
+                <select
+                  value={selectedTech}
+                  onChange={(e) => onTechChange(e.target.value)}
+                  className="border rounded px-3 py-2 text-sm flex-1 min-w-48"
+                >
+                  <option value="">{isAlreadyAssigned ? 'Select another technician...' : 'Select a technician...'}</option>
+                  {technicians.map((tech) => (
+                    <option key={tech.id} value={tech.id}>
+                      {tech.displayName || tech.username} (#{tech.id})
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={onAssign}
+                  disabled={!selectedTech}
+                  className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-semibold disabled:bg-gray-300 hover:bg-blue-700 transition"
+                >
+                  {isAlreadyAssigned ? 'Add Technician' : 'Assign'}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
+
+          {isFinalStatus && (
+            <div className="bg-gray-50 p-4 rounded border border-gray-300">
+              <p className="text-sm font-semibold text-gray-700">Assignment - Read Only</p>
+              <p className="text-xs text-gray-600 mt-2">Technician assignment cannot be changed for completed or rejected tickets.</p>
+            </div>
+          )}
 
           <div className="bg-white p-4 rounded border">
             <p className="text-sm font-semibold text-gray-900 mb-3">Allocate Time & Warning Message</p>
