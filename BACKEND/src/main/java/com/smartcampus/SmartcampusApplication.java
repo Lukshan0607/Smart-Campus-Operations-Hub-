@@ -16,6 +16,12 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import com.smartcampus.entity.AuthProvider;
+import com.smartcampus.entity.Role;
+import com.smartcampus.entity.User;
+import com.smartcampus.repository.UserRepository;
 
 @SpringBootApplication
 public class SmartcampusApplication {
@@ -87,5 +93,48 @@ public class SmartcampusApplication {
 				log.error("❌ Failed to connect to the database on startup.", ex);
 			}
 		};
+	}
+
+	@Bean
+	CommandLineRunner seedDefaultUsers(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+		return args -> {
+			createDefaultUserIfMissing(userRepository, passwordEncoder,
+				"ADM0001", "Admin User", "admin@smartcampus.com", "0770000001", "admin123", Role.ADMIN);
+
+			createDefaultUserIfMissing(userRepository, passwordEncoder,
+				"TEC0001", "Technician One", "technician@smartcampus.com", "0770000002", "tech123", Role.TECHNICIAN);
+
+			createDefaultUserIfMissing(userRepository, passwordEncoder,
+				"STU0001", "Student User", "student@smartcampus.com", "0770000003", "student123", Role.USER);
+
+			createDefaultUserIfMissing(userRepository, passwordEncoder,
+				"LEC0001", "Lecturer User", "lecturer@smartcampus.com", "0770000004", "lecturer123", Role.USER);
+		};
+	}
+
+	private static void createDefaultUserIfMissing(UserRepository userRepository,
+			PasswordEncoder passwordEncoder,
+			String userId,
+			String name,
+			String email,
+			String phone,
+			String rawPassword,
+			Role role) {
+		if (userRepository.existsByEmail(email)) {
+			return;
+		}
+
+		User user = User.builder()
+				.userId(userId)
+				.name(name)
+				.email(email)
+				.phone(phone)
+				.password(passwordEncoder.encode(rawPassword))
+				.role(role)
+				.status("Active")
+				.provider(AuthProvider.LOCAL)
+				.build();
+
+		userRepository.save(user);
 	}
 }

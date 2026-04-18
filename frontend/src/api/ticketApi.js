@@ -10,12 +10,22 @@ const applyAuthHeader = () => {
     axios.defaults.headers.common.Authorization = `Bearer ${token}`;
   }
 
-  if (user?.userId != null) {
+  if (user?.id != null) {
+    axios.defaults.headers.common['X-User-Id'] = String(user.id);
+  } else if (user?.userId != null && /^\d+$/.test(String(user.userId))) {
     axios.defaults.headers.common['X-User-Id'] = String(user.userId);
+  } else {
+    delete axios.defaults.headers.common['X-User-Id'];
   }
 
   if (user?.username) {
     axios.defaults.headers.common['X-Username'] = String(user.username);
+  } else if (user?.email) {
+    axios.defaults.headers.common['X-Username'] = String(user.email);
+  } else if (user?.name) {
+    axios.defaults.headers.common['X-Username'] = String(user.name);
+  } else {
+    delete axios.defaults.headers.common['X-Username'];
   }
 };
 

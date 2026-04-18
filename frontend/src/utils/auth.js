@@ -38,6 +38,6 @@ export const defaultDashboardPath = () => {
   const role = getUser()?.role;
   if (role === 'TECHNICIAN') return '/my-jobs';
   if (role === 'ADMIN') return '/admin/dashboard-new';
-  if (role === 'USER') return '/';
+  if (role === 'USER' || role === 'STUDENT' || role === 'LECTURER') return '/my-tickets';
   return '/my-tickets';
 };

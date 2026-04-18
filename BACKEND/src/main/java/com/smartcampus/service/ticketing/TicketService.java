@@ -1,10 +1,13 @@
 package com.smartcampus.service.ticketing;
 
 import com.smartcampus.dto.ticketing.TicketRequestDTO;
+import com.smartcampus.entity.Role;
+import com.smartcampus.entity.User;
 import com.smartcampus.dto.ticketing.TicketResponseDTO;
 import com.smartcampus.entity.ticketing.Ticket;
 import com.smartcampus.entity.TicketStatus;
 import com.smartcampus.exception.ticketing.TicketNotFoundException;
+import com.smartcampus.repository.UserRepository;
 import com.smartcampus.repository.ticketing.TicketRepository;
 import com.smartcampus.service.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +31,7 @@ public class TicketService {
     private final TicketRepository ticketRepository;
     private final NotificationService notificationService;
     private final AttachmentService attachmentService;
+    private final UserRepository userRepository;
 
     public TicketResponseDTO createTicket(TicketRequestDTO request, String username) {
         validateLocation(request);
@@ -71,6 +75,10 @@ public class TicketService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You cannot edit this ticket because it is already in progress or beyond");
         }
 
+        if (!isAdmin && ticket.getAssignedTechnicianId() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You cannot edit this ticket after a technician has been assigned");
+        }
+
         validateLocation(request);
         validateCategoryStructure(request);
 
@@ -107,6 +115,10 @@ public class TicketService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own ticket");
         }
 
+        if (!isAdmin && ticket.getAssignedTechnicianId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You can delete this ticket only after a technician is assigned");
+        }
+
         Long creatorId = ticket.getCreatorId();
         String creatorName = ticket.getCreatorName();
         Long technicianId = ticket.getAssignedTechnicianId();
@@ -115,18 +127,32 @@ public class TicketService {
         attachmentService.deleteAttachmentsByTicketId(id);
         ticketRepository.delete(ticket);
 
-        if (creatorId != null) {
+        if (isAdmin) {
+            if (creatorId != null) {
             notificationService.create(creatorId, creatorName != null ? creatorName : "user",
-                    "Ticket deleted", "Ticket #" + id + " was deleted by " + username + ".");
+                "Ticket deleted", "Ticket #" + id + " was deleted by " + username + ".");
+            }
+            if (technicianId != null) {
+            notificationService.create(technicianId, technicianName != null ? technicianName : "technician",
+                "Ticket deleted", "Ticket #" + id + " was deleted by " + username + ".");
+            }
+            notifyAllAdmins("Ticket deleted", "Ticket #" + id + " was deleted by " + username + ".");
+            return;
         }
 
         if (technicianId != null) {
-            notificationService.create(technicianId, technicianName != null ? technicianName : "technician",
-                    "Ticket deleted", "Ticket #" + id + " was deleted by " + username + ".");
+            notificationService.create(
+                technicianId,
+                technicianName != null ? technicianName : "technician",
+                "Ticket deleted by submitter",
+                "Ticket #" + id + " was deleted by the submitter " + username + "."
+            );
         }
 
-        notificationService.create(999L, "admin",
-                "Ticket deleted", "Ticket #" + id + " was deleted by " + username + ".");
+        notifyAllAdmins(
+            "Ticket deleted by submitter",
+            "Ticket #" + id + " was deleted by the submitter " + username + "."
+        );
     }
 
     public TicketResponseDTO getTicketById(Long id, String username) {
@@ -392,7 +418,22 @@ public class TicketService {
             return null;
         }
 
-        String normalized = username.trim().toLowerCase();
+        String raw = username.trim();
+        if (raw.matches("\\d+")) {
+            try {
+                return Long.parseLong(raw);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        Long resolvedFromEmail = userRepository.findByEmail(raw)
+                .map(User::getId)
+                .orElse(null);
+        if (resolvedFromEmail != null) {
+            return resolvedFromEmail;
+        }
+
+        String normalized = raw.toLowerCase();
         return switch (normalized) {
             case "admin" -> 99L;
             case "technician1" -> 2L;
@@ -425,6 +466,16 @@ public class TicketService {
                 .map(GrantedAuthority::getAuthority)
                 .anyMatch(auth -> auth.equals("ROLE_" + role));
     }
+
+            private void notifyAllAdmins(String title, String message) {
+            userRepository.findByRole(Role.ADMIN)
+                .forEach(admin -> notificationService.create(
+                    admin.getId(),
+                    admin.getName() != null && !admin.getName().isBlank() ? admin.getName() : "admin",
+                    title,
+                    message
+                ));
+            }
 
     private void validateLocation(TicketRequestDTO request) {
         String category = request.getLocationCategory();

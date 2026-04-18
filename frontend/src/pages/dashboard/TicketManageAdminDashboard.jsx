@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import ticketApi from '../../api/ticketApi';
 import authApi from '../../api/authApi';
 import { formatCategoryDisplay } from '../../utils/ticketCategories';
+import AdminSideNavigation from '../../components/Admin/AdminSideNavigation';
 
 const TicketManageAdminDashboard = () => {
   const navigate = useNavigate();
@@ -21,6 +22,7 @@ const TicketManageAdminDashboard = () => {
   const [chartPeriod, setChartPeriod] = useState('WEEK');
   const [selectedTechnicianId, setSelectedTechnicianId] = useState(null);
   const [activeTopView, setActiveTopView] = useState('OVERVIEW');
+  const [activeSection, setActiveSection] = useState('tickets');
 
   const STATUSES = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REJECTED'];
   const STATUS_COLORS = {
@@ -324,10 +326,17 @@ const TicketManageAdminDashboard = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6">Admin Ticket Dashboard</h1>
-      {loading && <p className="text-gray-600">Loading...</p>}
-      {error && <p className="text-red-600 mb-4">{error}</p>}
+    <div className="flex h-screen bg-slate-950">
+      <AdminSideNavigation
+        activeSection={activeSection}
+        setActiveSection={setActiveSection}
+      />
+
+      <div className="flex-1 overflow-auto bg-gray-50">
+        <div className="max-w-7xl mx-auto p-6">
+          <h1 className="text-3xl font-bold mb-6">Admin Ticket Dashboard</h1>
+          {loading && <p className="text-gray-600">Loading...</p>}
+          {error && <p className="text-red-600 mb-4">{error}</p>}
 
       <div className="bg-white border rounded-lg p-4 shadow-sm mb-6">
         <div className="flex flex-wrap gap-2 mb-4">
@@ -605,15 +614,17 @@ const TicketManageAdminDashboard = () => {
       </div>
       )}
 
-      <div className="mt-8 bg-white border rounded-lg p-4 shadow-sm">
-        <p className="text-base font-semibold text-gray-900">More Details Page</p>
-        <p className="text-sm text-gray-500 mt-1">Open another page for additional admin details and quick summary.</p>
-        <button
-          onClick={() => navigate('/admin/bottom-details')}
-          className="mt-3 px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-semibold hover:bg-black"
-        >
-          Go to Bottom Details Page
-        </button>
+          <div className="mt-8 bg-white border rounded-lg p-4 shadow-sm">
+            <p className="text-base font-semibold text-gray-900">More Details Page</p>
+            <p className="text-sm text-gray-500 mt-1">Open another page for additional admin details and quick summary.</p>
+            <button
+              onClick={() => navigate('/admin/bottom-details')}
+              className="mt-3 px-4 py-2 rounded-lg bg-gray-800 text-white text-sm font-semibold hover:bg-black"
+            >
+              Go to Bottom Details Page
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

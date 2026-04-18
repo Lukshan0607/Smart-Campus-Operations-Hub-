@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTickets } from '../../hooks/useTickets';
 import { getUser } from '../../utils/auth';
 
-const AttachmentUpload = ({ ticketId, attachments = [], onChange }) => {
+const AttachmentUpload = ({ ticketId, attachments = [], onChange, canUpload = true }) => {
   const { uploadAttachments, deleteAttachment, loading, error } = useTickets();
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadError, setUploadError] = useState('');
@@ -12,6 +12,10 @@ const AttachmentUpload = ({ ticketId, attachments = [], onChange }) => {
   const canDeleteAttachment = (attachment) => {
     if (!attachment) return false;
     if (currentUser?.role === 'ADMIN') return true;
+    const currentNumericId = currentUser?.id ?? null;
+    if (currentNumericId != null) {
+      return String(currentNumericId) === String(attachment.uploadedById);
+    }
     return currentUser?.userId != null && String(currentUser.userId) === String(attachment.uploadedById);
   };
 
@@ -76,12 +80,17 @@ const AttachmentUpload = ({ ticketId, attachments = [], onChange }) => {
           multiple
           accept="image/jpeg,image/png,image/webp"
           onChange={handleFileSelect}
-          disabled={loading || attachments.length >= 3}
+          disabled={!canUpload || loading || attachments.length >= 3}
           className="w-full"
         />
         <p className="text-sm text-gray-500 mt-2">
           Max 3 files, 5MB each. Allowed: JPEG, PNG, WebP
         </p>
+        {!canUpload && (
+          <p className="text-sm text-amber-700 mt-2">
+            You can upload images only when you can edit or delete this ticket.
+          </p>
+        )}
       </div>
 
       {(uploadError || error) && (
@@ -90,7 +99,7 @@ const AttachmentUpload = ({ ticketId, attachments = [], onChange }) => {
         </div>
       )}
 
-      {selectedFiles.length > 0 && (
+      {canUpload && selectedFiles.length > 0 && (
         <div className="mb-6">
           <h3 className="font-semibold text-gray-900 mb-2">Selected Files ({selectedFiles.length})</h3>
           <ul className="space-y-2 mb-4">

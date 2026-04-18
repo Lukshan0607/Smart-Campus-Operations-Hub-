@@ -43,7 +43,7 @@ function App() {
       <Route
         path="/my-tickets"
         element={
-          <ProtectedRoute roles={["STUDENT", "LECTURER", "ADMIN"]}>
+          <ProtectedRoute roles={["STUDENT", "LECTURER", "USER", "ADMIN"]}>
             <MyTicketsDashboard />
           </ProtectedRoute>
         }

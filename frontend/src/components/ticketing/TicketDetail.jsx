@@ -45,6 +45,14 @@ const TicketDetail = ({
     return <div className="text-center py-8 text-gray-500">Ticket not found</div>;
   }
 
+  const hasAssignedTechnician =
+    ticket.assignedTechnicianId != null &&
+    Number(ticket.assignedTechnicianId) > 0 &&
+    String(ticket.assignedTechnicianName || '').toLowerCase() !== 'unassigned';
+
+  const canSubmitImage =
+    canEdit && ((ticket.status === 'OPEN' && !hasAssignedTechnician) || hasAssignedTechnician);
+
   const handleStatusSubmit = async () => {
     if (!selectedStatus) return;
     try {
@@ -229,7 +237,7 @@ const TicketDetail = ({
         </div>
       )}
 
-      {canEdit && ticket.status === 'OPEN' && (
+      {canEdit && ticket.status === 'OPEN' && !hasAssignedTechnician && (
         <div className="mb-6 pb-6 border-b flex gap-3">
           <button
             onClick={onEditTicket}
@@ -237,20 +245,23 @@ const TicketDetail = ({
           >
             Edit Ticket
           </button>
-          <button
-            onClick={onDeleteTicket}
-            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
-          >
-            Delete Ticket
-          </button>
         </div>
       )}
 
-      {canEdit && ticket.status !== 'OPEN' && (
+      {canEdit && !hasAssignedTechnician && ticket.status !== 'OPEN' && (
         <div className="mb-6 pb-6 border-b">
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4 text-yellow-900">
             You cannot edit this ticket because it is already in progress or has moved to a later step.
-            You can delete the ticket if needed.
+            Deletion is available only after a technician is assigned.
+          </div>
+        </div>
+      )}
+
+      {canEdit && hasAssignedTechnician && (
+        <div className="mb-6 pb-6 border-b">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4 text-blue-900">
+            Technician has been assigned. You can delete this ticket if needed.
+            Admin and assigned technician will be notified.
           </div>
           <button
             onClick={onDeleteTicket}
@@ -262,7 +273,12 @@ const TicketDetail = ({
       )}
 
       {/* Attachments */}
-      <AttachmentUpload ticketId={ticket.id} attachments={ticket.attachments || []} onChange={onAttachmentsChanged} />
+      <AttachmentUpload
+        ticketId={ticket.id}
+        attachments={ticket.attachments || []}
+        onChange={onAttachmentsChanged}
+        canUpload={canSubmitImage}
+      />
 
       {/* Comments */}
       <CommentSection ticketId={ticket.id} />

@@ -32,12 +32,28 @@ const TicketDetailPage = () => {
   const canEdit = useMemo(() => {
     if (!selectedTicket || !currentUser) return false;
     if (currentUser.role === 'ADMIN') return true;
-    return String(selectedTicket.creatorId) === String(currentUser.userId);
+
+    const currentUserNumericId = currentUser.id ?? null;
+    const isOwnerById =
+      currentUserNumericId != null && String(selectedTicket.creatorId) === String(currentUserNumericId);
+    const isOwnerByEmail =
+      Boolean(currentUser.email) && String(selectedTicket.creatorName || '').toLowerCase() === String(currentUser.email).toLowerCase();
+    const isOwnerByName =
+      Boolean(currentUser.name) && String(selectedTicket.creatorName || '').toLowerCase() === String(currentUser.name).toLowerCase();
+
+    return isOwnerById || isOwnerByEmail || isOwnerByName;
   }, [selectedTicket, currentUser]);
 
   const canRate = useMemo(() => {
     if (!selectedTicket || !currentUser) return false;
-    const isOwner = String(selectedTicket.creatorId) === String(currentUser.userId);
+    const currentUserNumericId = currentUser.id ?? null;
+    const isOwnerById =
+      currentUserNumericId != null && String(selectedTicket.creatorId) === String(currentUserNumericId);
+    const isOwnerByEmail =
+      Boolean(currentUser.email) && String(selectedTicket.creatorName || '').toLowerCase() === String(currentUser.email).toLowerCase();
+    const isOwnerByName =
+      Boolean(currentUser.name) && String(selectedTicket.creatorName || '').toLowerCase() === String(currentUser.name).toLowerCase();
+    const isOwner = isOwnerById || isOwnerByEmail || isOwnerByName;
     return isOwner && selectedTicket.status === 'CLOSED';
   }, [selectedTicket, currentUser]);
 
