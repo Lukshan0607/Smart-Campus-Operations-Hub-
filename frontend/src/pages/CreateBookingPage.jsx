@@ -67,6 +67,8 @@ function CreateBookingPage() {
     return "";
   };
 
+//validation
+
   const validateQuantity = (value) => {
     const num = Number(value);
     if (isNaN(num) || num < 1) return "Quantity must be at least 1.";

@@ -41,6 +41,8 @@ function MyBookingsPage() {
     }
   };
 
+//fetchBooking
+
   const fetchBookingHistory = async (bookingId) => {
     try {
       setHistoryLoadingId(bookingId);

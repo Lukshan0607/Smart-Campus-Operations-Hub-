@@ -29,6 +29,8 @@ function AdminBookingsPage() {
     }
   };
 
+  //booking
+
   useEffect(() => {
     fetchBookings();
   }, []);
@@ -71,6 +73,7 @@ function AdminBookingsPage() {
     return "bg-gray-100 text-gray-700 border border-gray-200";
   };
 
+//approve booking
   const approveBooking = async (id) => {
     try {
       setRowLoading(id, true);
