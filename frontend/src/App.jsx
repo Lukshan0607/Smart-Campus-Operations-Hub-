@@ -19,6 +19,9 @@ import AdminUserManagement from './pages/dashboard/AdminUserManagement';
 import CategoryPriorityDetailsPage from './pages/dashboard/CategoryPriorityDetailsPage';
 import AdminBottomDetailsPage from './pages/dashboard/AdminBottomDetailsPage';
 import AssignTechniciansPage from './pages/dashboard/AssignTechniciansPage';
+import CreateBookingPage from "./pages/CreateBookingPage";
+import MyBookingsPage from "./pages/MyBookingsPage";
+import AdminBookingsPage from "./pages/AdminBookingsPage";
 
 function App() {
   return (
@@ -29,8 +32,13 @@ function App() {
       <Route path="/oauth-success" element={<OAuthSuccess />} />
       <Route path="/admin/dashboard-new" element={<AdminDashboardNew />} />
       <Route path="/admin/user-management" element={<AdminUserManagement />} />
-      
       <Route path="/dashboard" element={<Navigate to={defaultDashboardPath()} replace />} />
+      <Route path="/book/:resourceId" element={<CreateBookingPage />} />
+      <Route path="/my-bookings" element={<MyBookingsPage />} />
+      <Route path="/admin/bookings" element={<AdminBookingsPage />} />
+       <Route path="/resources" element={<ResourcesPage />} />
+
+
 
       <Route
         path="/my-tickets"
