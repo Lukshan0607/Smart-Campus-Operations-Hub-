@@ -259,12 +259,25 @@ public class BookingServiceImpl implements BookingService {
         boolean overdue = LocalDateTime.now().isAfter(booking.getEndTime())
             && booking.getStatus() == BookingStatus.APPROVED;
 
+        // Handle resource data safely to avoid lazy loading issues
+        String resourceName = "Unknown Resource";
+        String resourceType = "UNKNOWN";
+        String location = "Unknown Location";
+        Long resourceId = null;
+        
+        if (booking.getResource() != null) {
+            resourceId = booking.getResource().getId();
+            resourceName = booking.getResource().getName() != null ? booking.getResource().getName() : "Unnamed Resource";
+            resourceType = booking.getResource().getType() != null ? booking.getResource().getType().name() : "UNKNOWN";
+            location = booking.getResource().getLocation() != null ? booking.getResource().getLocation() : "Unknown Location";
+        }
+
         return BookingResponseDTO.builder()
             .id(booking.getId())
-            .resourceId(booking.getResource().getId())
-            .resourceName(booking.getResource().getName())
-            .resourceType(booking.getResource().getType().name())
-            .location(booking.getResource().getLocation())
+            .resourceId(resourceId)
+            .resourceName(resourceName)
+            .resourceType(resourceType)
+            .location(location)
             .userId(booking.getUserId())
             .startTime(booking.getStartTime())
             .endTime(booking.getEndTime())

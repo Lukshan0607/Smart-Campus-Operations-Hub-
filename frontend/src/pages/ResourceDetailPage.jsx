@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router-dom';
 import { FiArrowLeft, FiMapPin } from 'react-icons/fi';
 import { fetchResourceById } from '../api/resourcesApi';
 import { DEFAULT_USER_ID, RESOURCE_TYPES } from '../constants/resources';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
 
 function typeLabel(value) {
   return RESOURCE_TYPES.find((t) => t.value === value)?.label || value;
@@ -54,7 +56,9 @@ export default function ResourceDetailPage() {
   const maintenance = resource.recentMaintenanceIssues || [];
 
   return (
-    <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <Link
         to="/resources"
         className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 mb-6"
@@ -134,6 +138,8 @@ export default function ResourceDetailPage() {
           </ul>
         )}
       </section>
-    </main>
+      </main>
+      <Footer />
+    </div>
   );
 }

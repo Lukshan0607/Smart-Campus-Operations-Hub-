@@ -45,13 +45,13 @@ const AdminSideNavigation = ({ activeSection, setActiveSection }) => {
       section: 'RESOURCES',
       items: [
         { name: 'Facilities & Assets', id: 'facilities', icon: 'building' },
-        { name: 'Bookings', id: 'bookings', icon: 'calendar', badge: 12 }
+        { name: 'Bookings', id: 'bookings', icon: 'calendar' }
       ]
     },
     {
       section: 'OPERATIONS',
       items: [
-        { name: 'Incident Tickets', id: 'tickets', icon: 'ticket', badge: 5 },
+        { name: 'Incident Tickets', id: 'tickets', icon: 'ticket' },
         { name: 'Notifications', id: 'notifications', icon: 'bell' }
       ]
     },

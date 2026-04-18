@@ -6,7 +6,6 @@ function AdminBookingsPage() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
-  const [activeSection, setActiveSection] = useState("bookings");
 
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("ALL");
@@ -21,7 +20,9 @@ function AdminBookingsPage() {
     try {
       setLoading(true);
       setMessage("");
-      const response = await api.get("/api/admin/bookings");
+      // Fetch all bookings with pagination to get complete data
+      const response = await api.get("/api/admin/bookings?page=0&size=1000");
+      console.log("API Response:", response.data);
       setBookings(response.data?.content || []);
     } catch (error) {
       console.error("Failed to load admin bookings", error);
@@ -33,6 +34,13 @@ function AdminBookingsPage() {
 
   useEffect(() => {
     fetchBookings();
+    
+    // Set up auto-refresh to check for new bookings every 10 seconds
+    const interval = setInterval(() => {
+      fetchBookings();
+    }, 10000); // Refresh every 10 seconds
+    
+    return () => clearInterval(interval);
   }, []);
 
   const setRowLoading = (id, value) => {
@@ -191,29 +199,31 @@ function AdminBookingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex">
-        <div className="w-64 bg-white border-r min-h-screen"></div>
-        <div className="flex-1 p-6 animate-pulse space-y-6"></div>
+      <div className="min-h-screen bg-slate-50 p-6">
+        <div className="max-w-7xl mx-auto animate-pulse space-y-6">
+          <div className="h-10 w-72 bg-gray-200 rounded"></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((item) => (
+              <div key={item} className="h-24 bg-white rounded-2xl shadow-sm"></div>
+            ))}
+          </div>
+          <div className="h-16 bg-white rounded-2xl shadow-sm"></div>
+          <div className="space-y-4">
+            {[1, 2, 3].map((item) => (
+              <div key={item} className="h-64 bg-white rounded-2xl shadow-sm"></div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-
-      {/* ✅ ONLY ADDITION: SIDEBAR */}
-      <div className="w-64 bg-white border-r border-gray-200 min-h-screen sticky top-0">
-        <AdminSideNavigation
-          activeSection={activeSection}
-          setActiveSection={setActiveSection}
-        />
-      </div>
-
-      {/* YOUR EXISTING PAGE (UNCHANGED BODY) */}
+    <div className="flex min-h-screen bg-gray-50">
+      <AdminSideNavigation activeSection="bookings" setActiveSection={() => {}} />
+      
       <div className="flex-1 p-6 text-black">
-
         <div className="max-w-7xl mx-auto">
-
           {/* Header */}
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-8">
             <div>
@@ -277,7 +287,7 @@ function AdminBookingsPage() {
               <div className="w-full lg:max-w-md">
                 <input
                   type="text"
-                  placeholder="Search..."
+                  placeholder="Search by booking ID, user ID, resource, type, location, or purpose..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full rounded-xl border border-gray-200 px-4 py-3 outline-none focus:ring-2 focus:ring-gray-900"
@@ -304,31 +314,249 @@ function AdminBookingsPage() {
             </div>
           </div>
 
-          {/* Booking cards (UNCHANGED) */}
-          <div className="grid gap-5">
-            {filteredBookings.map((booking) => {
-              const rowBusy = !!actionLoading[booking.id];
+          {/* Booking cards */}
+          {filteredBookings.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
+              <h3 className="text-xl font-semibold text-gray-800">No bookings found</h3>
+              <p className="text-gray-500 mt-2">
+                Try changing the search text or filter option
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-5">
+              {filteredBookings.map((booking) => {
+                const rowBusy = !!actionLoading[booking.id];
 
-              return (
-                <div key={booking.id} className="bg-white p-6 rounded-xl shadow-sm">
-                  {/* your full card UI stays SAME */}
-                  Booking ID: {booking.id}
+                return (
+                  <div
+                    key={booking.id}
+                    className="bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition p-6"
+                  >
+                    <div className="flex flex-col gap-6">
+                      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-3 mb-2">
+                            <h2 className="text-xl font-bold text-gray-900">
+                              {booking.resourceName || "Unnamed Resource"}
+                            </h2>
+
+                            <span
+                              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusBadgeClass(
+                                booking
+                              )}`}
+                            >
+                              {booking.status}
+                            </span>
+                          </div>
+
+                          <p className="text-sm text-gray-500">
+                            Booking ID: #{booking.id}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-3">
+                          {booking.status === "PENDING" && (
+                            <>
+                              <button
+                                onClick={() => approveBooking(booking.id)}
+                                disabled={rowBusy}
+                                className="px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed transition"
+                              >
+                                {rowBusy ? "Processing..." : "Approve"}
+                              </button>
+
+                              <button
+                                onClick={() => openRejectModal(booking)}
+                                disabled={rowBusy}
+                                className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300 disabled:cursor-not-allowed transition"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+
+                          {booking.status === "APPROVED" && (
+                            <button
+                              onClick={() => completeBooking(booking.id)}
+                              disabled={rowBusy}
+                              className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed transition"
+                            >
+                              {rowBusy ? "Processing..." : "Mark Complete"}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Details */}
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                          Booking Details
+                        </h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 text-sm">
+                          <div className="bg-gray-50 rounded-xl p-4">
+                            <p className="text-gray-500 mb-1">User ID</p>
+                            <p className="font-semibold text-gray-800">{booking.userId ?? "-"}</p>
+                          </div>
+
+                          <div className="bg-gray-50 rounded-xl p-4">
+                            <p className="text-gray-500 mb-1">Resource Type</p>
+                            <p className="font-semibold text-gray-800">
+                              {booking.resourceType || "-"}
+                            </p>
+                          </div>
+
+                          <div className="bg-gray-50 rounded-xl p-4">
+                            <p className="text-gray-500 mb-1">Location</p>
+                            <p className="font-semibold text-gray-800">
+                              {booking.location || "-"}
+                            </p>
+                          </div>
+
+                          <div className="bg-gray-50 rounded-xl p-4">
+                            <p className="text-gray-500 mb-1">Purpose</p>
+                            <p className="font-semibold text-gray-800">
+                              {booking.purpose || "-"}
+                            </p>
+                          </div>
+
+                          <div className="bg-gray-50 rounded-xl p-4">
+                            <p className="text-gray-500 mb-1">Start Time</p>
+                            <p className="font-semibold text-gray-800">
+                              {formatDateTime(booking.startTime)}
+                            </p>
+                          </div>
+
+                          <div className="bg-gray-50 rounded-xl p-4">
+                            <p className="text-gray-500 mb-1">End Time</p>
+                            <p className="font-semibold text-gray-800">
+                              {formatDateTime(booking.endTime)}
+                            </p>
+                          </div>
+
+                          <div className="bg-gray-50 rounded-xl p-4">
+                            <p className="text-gray-500 mb-1">Quantity</p>
+                            <p className="font-semibold text-gray-800">
+                              {booking.quantity ?? "-"}
+                            </p>
+                          </div>
+
+                          <div className="bg-gray-50 rounded-xl p-4">
+                            <p className="text-gray-500 mb-1">Expected Attendees</p>
+                            <p className="font-semibold text-gray-800">
+                              {booking.expectedAttendees ?? "-"}
+                            </p>
+                          </div>
+
+                          <div className="bg-gray-50 rounded-xl p-4">
+                            <p className="text-gray-500 mb-1">Created At</p>
+                            <p className="font-semibold text-gray-800">
+                              {formatDateTime(booking.createdAt)}
+                            </p>
+                          </div>
+
+                          <div className="bg-gray-50 rounded-xl p-4">
+                            <p className="text-gray-500 mb-1">Reviewed By</p>
+                            <p className="font-semibold text-gray-800">
+                              {booking.reviewedBy ?? "-"}
+                            </p>
+                          </div>
+
+                          <div className="bg-gray-50 rounded-xl p-4">
+                            <p className="text-gray-500 mb-1">Reviewed At</p>
+                            <p className="font-semibold text-gray-800">
+                              {formatDateTime(booking.reviewedAt)}
+                            </p>
+                          </div>
+
+                          <div className="bg-gray-50 rounded-xl p-4">
+                            <p className="text-gray-500 mb-1">Rejection Reason</p>
+                            <p className="font-semibold text-gray-800">
+                              {booking.rejectionReason || "-"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Reject Modal */}
+          {rejectModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+              <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+                <div className="border-b border-gray-100 px-6 py-4">
+                  <h2 className="text-xl font-bold text-gray-900">Reject Booking</h2>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Enter a clear reason for rejecting this booking request.
+                  </p>
                 </div>
-              );
-            })}
-          </div>
 
+                <div className="px-6 py-5">
+                  <div className="mb-4 rounded-xl bg-gray-50 p-4 text-sm text-gray-700">
+                    <p>
+                      <span className="font-semibold">Booking ID:</span>{" "}
+                      #{selectedBooking?.id}
+                    </p>
+                    <p className="mt-1">
+                      <span className="font-semibold">Resource:</span>{" "}
+                      {selectedBooking?.resourceName || "-"}
+                    </p>
+                    <p className="mt-1">
+                      <span className="font-semibold">User ID:</span>{" "}
+                      {selectedBooking?.userId ?? "-"}
+                    </p>
+                  </div>
+
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Reject Reason
+                  </label>
+
+                  <textarea
+                    rows={5}
+                    value={rejectReason}
+                    onChange={(e) => {
+                      setRejectReason(e.target.value);
+                      if (e.target.value.trim()) {
+                        setRejectReasonError("");
+                      }
+                    }}
+                    placeholder="Example: Resource is unavailable during the requested time slot."
+                    className={`w-full rounded-xl border px-4 py-3 outline-none resize-none focus:ring-2 ${
+                      rejectReasonError
+                        ? "border-red-400 bg-red-50 focus:ring-red-200"
+                        : "border-gray-200 bg-white focus:ring-gray-900/10"
+                    }`}
+                  />
+
+                  {rejectReasonError && (
+                    <p className="mt-2 text-sm text-red-600">{rejectReasonError}</p>
+                  )}
+                </div>
+
+                <div className="flex flex-col-reverse sm:flex-row gap-3 justify-end border-t border-gray-100 px-6 py-4">
+                  <button
+                    onClick={closeRejectModal}
+                    className="px-4 py-2 rounded-xl bg-gray-100 text-gray-800 hover:bg-gray-200 transition"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    onClick={submitRejectBooking}
+                    className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 transition"
+                  >
+                    Confirm Reject
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Reject Modal (UNCHANGED) */}
-      {rejectModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white p-6 rounded-xl">
-            Reject Modal
-          </div>
-        </div>
-      )}
     </div>
   );
 }

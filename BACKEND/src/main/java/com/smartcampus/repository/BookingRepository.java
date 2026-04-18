@@ -20,6 +20,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     @Query("""
         SELECT b FROM Booking b
+        LEFT JOIN FETCH b.resource
         WHERE (:status IS NULL OR b.status = :status)
         ORDER BY b.createdAt DESC
     """)
@@ -27,6 +28,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     @Query("""
         SELECT b FROM Booking b
+        LEFT JOIN FETCH b.resource
         WHERE b.userId = :userId
         ORDER BY b.createdAt DESC
     """)

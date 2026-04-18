@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { FiChevronLeft, FiChevronRight, FiMapPin, FiSearch } from 'react-icons/fi';
 import { fetchResourcesPage } from '../api/resourcesApi';
 import { DEFAULT_USER_ID, RESOURCE_STATUSES, RESOURCE_TYPES } from '../constants/resources';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
 
 function typeLabel(value) {
   return RESOURCE_TYPES.find((t) => t.value === value)?.label || value;
@@ -70,7 +72,9 @@ export default function ResourcesPage() {
   const totalPages = data?.totalPages ?? 0;
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Campus resources</h1>
         <p className="mt-1 text-gray-600">
@@ -245,6 +249,8 @@ export default function ResourcesPage() {
           )}
         </>
       )}
-    </main>
+      </main>
+      <Footer />
+    </div>
   );
 }

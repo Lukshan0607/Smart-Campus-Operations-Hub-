@@ -23,6 +23,7 @@ import CreateBookingPage from "./pages/CreateBookingPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
 import AdminBookingsPage from "./pages/AdminBookingsPage";
 import AdminResources from "./pages/AdminResources";
+import UserProfilePage from "./pages/UserProfilePage";
 
 function App() {
   return (
@@ -178,6 +179,15 @@ function App() {
         element={
           <ProtectedRoute>
             <BookResourcePage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/profile"
+        element={
+          <ProtectedRoute>
+            <UserProfilePage />
           </ProtectedRoute>
         }
       />
