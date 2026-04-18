@@ -15,6 +15,8 @@ function AdminBookingsPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [rejectReasonError, setRejectReasonError] = useState("");
 
+  //fetchBooking
+
   const fetchBookings = async () => {
     try {
       setLoading(true);
