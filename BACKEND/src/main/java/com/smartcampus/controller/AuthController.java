@@ -1,60 +1,126 @@
 package com.smartcampus.controller;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.AuthenticationException;
+import com.smartcampus.entity.*;
+import com.smartcampus.repository.UserRepository;
+import com.smartcampus.security.JwtUtil;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.*;
+
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
+@CrossOrigin(origins = "http://localhost:5173")
+@RequiredArgsConstructor
 public class AuthController {
 
-    /**
-     * Simple login endpoint for demo/testing
-     * No authentication manager integration yet - just returns demo token
-     */
-    @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
-        // For demo purposes - accept any username with password "password"
-        if (request.password == null || !request.password.equals("password")) {
-            return ResponseEntity.status(401).build();
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
+
+    // ---------------- GOOGLE LOGIN SUCCESS ----------------
+    @GetMapping("/login-success")
+    public Map<String, Object> loginSuccess(@AuthenticationPrincipal OAuth2User user) {
+
+        return Map.of(
+                "message", "Google Login Successful!",
+                "email", user.getAttribute("email"),
+                "name", user.getAttribute("name"),
+                "picture", user.getAttribute("picture")
+        );
+    }
+
+    // ---------------- GOOGLE LOGIN FAILURE ----------------
+    @GetMapping("/login-failure")
+    public Map<String, String> loginFailure() {
+        return Map.of("error", "Login failed");
+    }
+
+    // ---------------- TEST CONNECTION ----------------
+    @GetMapping("/test")
+    public Map<String, String> testConnection() {
+        return Map.of(
+                "message", "Backend running",
+                "status", "OK"
+        );
+    }
+
+    // ---------------- SIGNUP ----------------
+    @PostMapping("/signup")
+    public Map<String, Object> signup(@RequestBody User request) {
+
+        if (userRepository.existsByEmail(request.getEmail())) {
+            return Map.of("error", "Email already exists");
         }
 
-        // Generate a simple token (in real app, use JWT with proper signing)
-        String token = "demo-token-" + System.currentTimeMillis();
-        String role = detectRole(request.username);
+        long count = userRepository.count() + 1;
+        String userId = String.format("USR%04d", count);
 
-        return ResponseEntity.ok(new LoginResponse(
-            token,
-            request.username,
-            role,
-            1L // demo userId
-        ));
+        User user = User.builder()
+                .userId(userId)
+                .name(request.getName())
+                .email(request.getEmail())
+                .phone(request.getPhone())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(Role.USER)
+                .status("Active")
+                .provider(AuthProvider.LOCAL)
+                .build();
+
+        userRepository.save(user);
+
+        return Map.of(
+                "message", "Account created successfully",
+                "userId", userId
+        );
     }
 
-    private String detectRole(String username) {
-        if (username.contains("admin")) return "ADMIN";
-        if (username.contains("tech")) return "TECHNICIAN";
-        if (username.contains("lecturer")) return "LECTURER";
-        return "STUDENT";
-    }
+    // ---------------- LOGIN ----------------
+    @PostMapping("/login")
+    public Map<String, Object> login(@RequestBody Map<String, String> request) {
 
-    @Data
-    @AllArgsConstructor
-    public static class LoginResponse {
-        private String token;
-        private String username;
-        private String role;
-        private Long userId;
-    }
+        String email = request.get("email");
+        String password = request.get("password");
 
-    @Data
-    public static class LoginRequest {
-        public String username;
-        public String password;
+        Optional<User> optionalUser = userRepository.findByEmail(email);
+
+        if (optionalUser.isEmpty()) {
+            return Map.of("error", "Invalid email or password");
+        }
+
+        User user = optionalUser.get();
+
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            return Map.of("error", "Invalid email or password");
+        }
+
+        // Check user status
+        if (!"Active".equals(user.getStatus())) {
+            return Map.of("error", "Account is deactivated. Please contact administrator.");
+        }
+
+        // Allow all roles to login (USER, ADMIN, TECHNICIAN)
+
+        // generate JWT
+        String token = jwtUtil.generateToken(
+                user.getEmail(),
+                user.getRole().name()
+        );
+
+        return Map.of(
+                "message", "Login successful",
+                "token", token,
+                "user", Map.of(
+                        "userId", user.getUserId(),
+                        "name", user.getName(),
+                        "email", user.getEmail(),
+                        "role", user.getRole()
+                )
+        );
     }
 }

@@ -4,6 +4,8 @@ import ticketApi from '../api/ticketApi';
 import {
   setTickets,
   addTicket,
+  removeTicket,
+  updateTicketDetails,
   setSelectedTicket,
   updateTicketStatus,
   assignTechnicianToTicket,
@@ -78,6 +80,61 @@ export const useTickets = () => {
     [dispatch]
   );
 
+  const updateTicket = useCallback(
+    async (id, ticketData) => {
+      dispatch(setLoading(true));
+      try {
+        const response = await ticketApi.updateTicket(id, ticketData);
+        dispatch(updateTicketDetails(response.data));
+        dispatch(setSelectedTicket(response.data));
+        dispatch(clearError());
+        return response.data;
+      } catch (err) {
+        dispatch(setError(err.response?.data?.message || 'Failed to update ticket'));
+        throw err;
+      } finally {
+        dispatch(setLoading(false));
+      }
+    },
+    [dispatch]
+  );
+
+  const deleteTicket = useCallback(
+    async (id) => {
+      dispatch(setLoading(true));
+      try {
+        await ticketApi.deleteTicket(id);
+        dispatch(removeTicket(id));
+        dispatch(clearError());
+      } catch (err) {
+        dispatch(setError(err.response?.data?.message || 'Failed to delete ticket'));
+        throw err;
+      } finally {
+        dispatch(setLoading(false));
+      }
+    },
+    [dispatch]
+  );
+
+  const submitRating = useCallback(
+    async (id, rating, feedback) => {
+      dispatch(setLoading(true));
+      try {
+        const response = await ticketApi.submitRating(id, rating, feedback);
+        dispatch(updateTicketDetails(response.data));
+        dispatch(setSelectedTicket(response.data));
+        dispatch(clearError());
+        return response.data;
+      } catch (err) {
+        dispatch(setError(err.response?.data?.message || 'Failed to submit rating'));
+        throw err;
+      } finally {
+        dispatch(setLoading(false));
+      }
+    },
+    [dispatch]
+  );
+
   const updateStatus = useCallback(
     async (id, status, resolutionNote) => {
       dispatch(setLoading(true));
@@ -134,6 +191,23 @@ export const useTickets = () => {
     [dispatch]
   );
 
+  const deleteAttachment = useCallback(
+    async (ticketId, imageId) => {
+      dispatch(setLoading(true));
+      try {
+        const response = await ticketApi.deleteImage(ticketId, imageId);
+        dispatch(clearError());
+        return response.data;
+      } catch (err) {
+        dispatch(setError(err.response?.data?.message || 'Failed to delete attachment'));
+        throw err;
+      } finally {
+        dispatch(setLoading(false));
+      }
+    },
+    [dispatch]
+  );
+
   return {
     tickets,
     selectedTicket,
@@ -143,8 +217,12 @@ export const useTickets = () => {
     fetchTickets,
     fetchTicket,
     createTicket,
+    updateTicket,
+    deleteTicket,
+    submitRating,
     updateStatus,
     assignTechnician,
     uploadAttachments,
+    deleteAttachment,
   };
 };

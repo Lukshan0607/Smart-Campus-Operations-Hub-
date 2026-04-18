@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import StatusBadge from './StatusBadge';
+import { formatCategoryDisplay } from '../../utils/ticketCategories';
 
 const TicketCard = ({ ticket }) => {
   return (
@@ -19,7 +20,7 @@ const TicketCard = ({ ticket }) => {
         <div className="grid grid-cols-2 gap-2 text-xs mb-3">
           <div>
             <span className="text-gray-500">Category:</span>
-            <p className="font-semibold text-gray-900">{ticket.category}</p>
+            <p className="font-semibold text-gray-900">{formatCategoryDisplay(ticket.category, ticket.subCategory)}</p>
           </div>
           <div>
             <span className="text-gray-500">Priority:</span>

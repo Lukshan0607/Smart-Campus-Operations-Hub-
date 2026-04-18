@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { getCategoryOptions, getSubCategoryOptions } from '../../utils/ticketCategories';
 
 const LOCATION_OPTIONS = [
   { value: 'MAIN_BUILDING', label: 'Main Building' },
@@ -10,30 +11,58 @@ const LOCATION_OPTIONS = [
 const FLOOR_OPTIONS = Array.from({ length: 10 }, (_, index) => String(index + 1));
 const BLOCK_OPTIONS = ['L', 'H'];
 
-const TicketForm = ({ onSubmit, loading = false, initialData = null }) => {
+const getDefaultFormData = () => ({
+  title: '',
+  description: '',
+  category: 'FACILITIES',
+  subCategory: 'LIGHTING',
+  priority: 'MEDIUM',
+  locationCategory: 'MAIN_BUILDING',
+  buildingName: 'Main Building',
+  floorNumber: '1',
+  block: 'L',
+  roomNumber: '',
+  otherLocation: '',
+  contactPhone: '',
+});
+
+const isValidContactNumber = (value) => /^\d{10}$/.test(String(value || '').trim());
+
+const TicketForm = ({ onSubmit, loading = false, initialData = null, submitLabel = 'Create Ticket' }) => {
   const [formData, setFormData] = useState(
-    initialData || {
-      title: '',
-      description: '',
-      category: 'MAINTENANCE',
-      priority: 'MEDIUM',
-      locationCategory: 'MAIN_BUILDING',
-      buildingName: 'Main Building',
-      floorNumber: '1',
-      block: 'L',
-      roomNumber: '',
-      otherLocation: '',
-      contactPhone: '',
-    }
+    initialData || getDefaultFormData()
   );
 
   const [errors, setErrors] = useState({});
 
+  useEffect(() => {
+    if (initialData) {
+      const validCategory = getCategoryOptions().some((item) => item.value === initialData.category)
+        ? initialData.category
+        : 'FACILITIES';
+      const initialCategory = validCategory;
+      const currentSubCategories = getSubCategoryOptions(initialCategory);
+      const fallbackSubCategory = currentSubCategories[0]?.value || 'GENERAL';
+      const initialSubCategoryIsValid = currentSubCategories.some((item) => item.value === initialData.subCategory);
+      setFormData({
+        ...getDefaultFormData(),
+        ...initialData,
+        category: initialCategory,
+        subCategory: initialSubCategoryIsValid ? initialData.subCategory : fallbackSubCategory,
+        floorNumber: initialData.floorNumber != null ? String(initialData.floorNumber) : '',
+      });
+    }
+  }, [initialData]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
+    const nextValue = name === 'contactPhone' ? value.replace(/\D/g, '').slice(0, 10) : value;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: nextValue,
+      ...(name === 'category'
+        ? { subCategory: getSubCategoryOptions(value)[0]?.value || '' }
+        : {}),
       ...(name === 'locationCategory'
         ? { buildingName: LOCATION_OPTIONS.find((option) => option.value === value)?.label || value }
         : {}),
@@ -43,6 +72,18 @@ const TicketForm = ({ onSubmit, loading = false, initialData = null }) => {
       setErrors((prev) => ({
         ...prev,
         [name]: '',
+      }));
+    }
+    if (name === 'category' && errors.subCategory) {
+      setErrors((prev) => ({
+        ...prev,
+        subCategory: '',
+      }));
+    }
+    if (name === 'contactPhone' && errors.contactPhone) {
+      setErrors((prev) => ({
+        ...prev,
+        contactPhone: '',
       }));
     }
   };
@@ -57,6 +98,9 @@ const TicketForm = ({ onSubmit, loading = false, initialData = null }) => {
     }
     if (!formData.category) {
       newErrors.category = 'Category is required';
+    }
+    if (!formData.subCategory) {
+      newErrors.subCategory = 'Subcategory is required';
     }
     if (!formData.priority) {
       newErrors.priority = 'Priority is required';
@@ -78,6 +122,9 @@ const TicketForm = ({ onSubmit, loading = false, initialData = null }) => {
       if (!formData.roomNumber.trim()) {
         newErrors.roomNumber = 'Room number is required';
       }
+    }
+    if (formData.contactPhone && !isValidContactNumber(formData.contactPhone)) {
+      newErrors.contactPhone = 'Contact number must be exactly 10 digits';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -121,7 +168,7 @@ const TicketForm = ({ onSubmit, loading = false, initialData = null }) => {
         {errors.description && <p className="text-red-600 text-sm mt-1">{errors.description}</p>}
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label className="block text-sm font-semibold text-gray-900 mb-2">Category</label>
           <select
@@ -132,14 +179,36 @@ const TicketForm = ({ onSubmit, loading = false, initialData = null }) => {
               errors.category ? 'border-red-500' : 'border-gray-300'
             }`}
           >
-            <option value="MAINTENANCE">Maintenance</option>
-            <option value="REPAIR">Repair</option>
-            <option value="CLEANING">Cleaning</option>
-            <option value="OTHER">Other</option>
+            {getCategoryOptions().map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
           {errors.category && <p className="text-red-600 text-sm mt-1">{errors.category}</p>}
         </div>
 
+        <div>
+          <label className="block text-sm font-semibold text-gray-900 mb-2">Subcategory</label>
+          <select
+            name="subCategory"
+            value={formData.subCategory}
+            onChange={handleChange}
+            className={`w-full border rounded-lg px-3 py-2 ${
+              errors.subCategory ? 'border-red-500' : 'border-gray-300'
+            }`}
+          >
+            {getSubCategoryOptions(formData.category).map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {errors.subCategory && <p className="text-red-600 text-sm mt-1">{errors.subCategory}</p>}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div>
           <label className="block text-sm font-semibold text-gray-900 mb-2">Priority</label>
           <select
@@ -282,9 +351,14 @@ const TicketForm = ({ onSubmit, loading = false, initialData = null }) => {
           name="contactPhone"
           value={formData.contactPhone}
           onChange={handleChange}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2"
-          placeholder="+1 (555) 000-0000"
+          inputMode="numeric"
+          maxLength={10}
+          className={`w-full border rounded-lg px-3 py-2 ${
+            errors.contactPhone ? 'border-red-500' : 'border-gray-300'
+          }`}
+          placeholder="Enter 10 digits"
         />
+        {errors.contactPhone && <p className="text-red-600 text-sm mt-1">{errors.contactPhone}</p>}
       </div>
 
       <button
@@ -292,7 +366,7 @@ const TicketForm = ({ onSubmit, loading = false, initialData = null }) => {
         disabled={loading}
         className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 transition"
       >
-        {loading ? 'Creating...' : 'Create Ticket'}
+        {loading ? 'Saving...' : submitLabel}
       </button>
     </form>
   );

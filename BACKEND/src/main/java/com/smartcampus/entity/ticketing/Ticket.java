@@ -31,6 +31,8 @@ public class Ticket {
     @Column(nullable = false)
     private String category;
 
+    private String subCategory;
+
     @Column(nullable = false)
     private String priority;
 
@@ -72,10 +74,29 @@ public class Ticket {
     private String assignedTechnicianName;
 
     @Column(columnDefinition = "TEXT")
+    private String additionalTechnicianIds;
+
+    @Column(columnDefinition = "TEXT")
+    private String additionalTechnicianNames;
+
+    @Column(columnDefinition = "TEXT")
     private String resolutionNote;
 
     @Column(columnDefinition = "TEXT")
+    private String completionNotes;
+
+    @Column(columnDefinition = "TEXT")
     private String rejectionReason;
+
+    private LocalDateTime expectedCompletionAt;
+
+    @Column(length = 500)
+    private String warningMessage;
+
+    private Integer rating;
+
+    @Column(columnDefinition = "TEXT")
+    private String feedback;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)

@@ -21,6 +21,8 @@ public class TicketResponseDTO {
 
     private String category;
 
+    private String subCategory;
+
     private String priority;
 
     private TicketStatus status;
@@ -51,9 +53,23 @@ public class TicketResponseDTO {
 
     private String assignedTechnicianName;
 
+    private String additionalTechnicianIds;
+
+    private String additionalTechnicianNames;
+
     private String resolutionNote;
 
+    private String completionNotes;
+
     private String rejectionReason;
+
+    private LocalDateTime expectedCompletionAt;
+
+    private String warningMessage;
+
+    private Integer rating;
+
+    private String feedback;
 
     private LocalDateTime createdAt;
 

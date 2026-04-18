@@ -2,11 +2,14 @@ package com.smartcampus.controller.ticketing;
 
 import com.smartcampus.dto.ticketing.AttachmentDTO;
 import com.smartcampus.dto.ticketing.TicketRequestDTO;
+import com.smartcampus.dto.ticketing.TicketReportDTO;
 import com.smartcampus.dto.ticketing.TicketResponseDTO;
 import com.smartcampus.entity.TicketStatus;
 import com.smartcampus.service.ticketing.AttachmentService;
 import com.smartcampus.service.ticketing.TicketService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -36,11 +40,27 @@ public class TicketController {
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<TicketResponseDTO> updateTicket(@PathVariable Long id,
+                                                          @Valid @RequestBody TicketRequestDTO request,
+                                                          Principal principal) {
+        String username = principal != null ? principal.getName() : "demo-user";
+        TicketResponseDTO updated = ticketService.updateTicket(id, request, username);
+        return ResponseEntity.ok(updated);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<TicketResponseDTO> getTicket(@PathVariable Long id, Principal principal) {
         String username = principal != null ? principal.getName() : "demo-user";
         TicketResponseDTO dto = ticketService.getTicketById(id, username);
         return ResponseEntity.ok(dto);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTicket(@PathVariable Long id, Principal principal) {
+        String username = principal != null ? principal.getName() : "demo-user";
+        ticketService.deleteTicket(id, username);
+        return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{id}/status")
@@ -67,6 +87,16 @@ public class TicketController {
     @GetMapping("/my")
     public ResponseEntity<List<TicketResponseDTO>> myTickets() {
         return ResponseEntity.ok(ticketService.listMyTickets());
+    }
+
+    @GetMapping("/reports/monthly")
+    public ResponseEntity<List<TicketReportDTO>> monthlyReports(@RequestParam(required = false) Integer year) {
+        return ResponseEntity.ok(ticketService.getMonthlyReports(year));
+    }
+
+    @GetMapping("/reports/yearly")
+    public ResponseEntity<List<TicketReportDTO>> yearlyReports() {
+        return ResponseEntity.ok(ticketService.getYearlyReports());
     }
 
     /**
@@ -106,6 +136,20 @@ public class TicketController {
         return ResponseEntity.ok(ticketService.adminUpdateStatus(id, request.getStatus(), request.getReason()));
     }
 
+    @PatchMapping("/{id}/deadline")
+    public ResponseEntity<TicketResponseDTO> updateDeadline(@PathVariable Long id,
+                                                            @Valid @RequestBody DeadlineRequest request) {
+        return ResponseEntity.ok(ticketService.setDeadline(id, request.getExpectedCompletionAt(), request.getWarningMessage()));
+    }
+
+    @PatchMapping("/{id}/rating")
+    public ResponseEntity<TicketResponseDTO> submitRating(@PathVariable Long id,
+                                                          @Valid @RequestBody RatingRequest request,
+                                                          Principal principal) {
+        String username = principal != null ? principal.getName() : "demo-user";
+        return ResponseEntity.ok(ticketService.submitRating(id, request.getRating(), request.getFeedback(), username));
+    }
+
     @PostMapping(path = "/{id}/attachments", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<List<AttachmentDTO>> uploadAttachments(@PathVariable Long id,
                                                                  @RequestParam("files") List<MultipartFile> files,
@@ -143,7 +187,7 @@ public class TicketController {
                                             @PathVariable Long imageId,
                                             Principal principal) {
         String username = principal != null ? principal.getName() : "demo-user";
-        attachmentService.deleteAttachment(imageId, username);
+        attachmentService.deleteAttachment(id, imageId, username);
         return ResponseEntity.noContent().build();
     }
 
@@ -217,6 +261,54 @@ public class TicketController {
 
         public void setResolutionNote(String resolutionNote) {
             this.resolutionNote = resolutionNote;
+        }
+    }
+
+    public static class DeadlineRequest {
+        @NotNull
+        private LocalDateTime expectedCompletionAt;
+
+        private String warningMessage;
+
+        public LocalDateTime getExpectedCompletionAt() {
+            return expectedCompletionAt;
+        }
+
+        public void setExpectedCompletionAt(LocalDateTime expectedCompletionAt) {
+            this.expectedCompletionAt = expectedCompletionAt;
+        }
+
+        public String getWarningMessage() {
+            return warningMessage;
+        }
+
+        public void setWarningMessage(String warningMessage) {
+            this.warningMessage = warningMessage;
+        }
+    }
+
+    public static class RatingRequest {
+        @NotNull
+        @Min(1)
+        @Max(5)
+        private Integer rating;
+
+        private String feedback;
+
+        public Integer getRating() {
+            return rating;
+        }
+
+        public void setRating(Integer rating) {
+            this.rating = rating;
+        }
+
+        public String getFeedback() {
+            return feedback;
+        }
+
+        public void setFeedback(String feedback) {
+            this.feedback = feedback;
         }
     }
 }

@@ -1,10 +1,30 @@
 import React, { useState } from 'react';
 import { useTickets } from '../../hooks/useTickets';
+import { getUser } from '../../utils/auth';
 
-const AttachmentUpload = ({ ticketId, attachments = [] }) => {
-  const { uploadAttachments, loading, error } = useTickets();
+const AttachmentUpload = ({
+  ticketId,
+  attachments = [],
+  onChange,
+  canUpload = true,
+  canDeleteCurrentAttachments = false,
+}) => {
+  const { uploadAttachments, deleteAttachment, loading, error } = useTickets();
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadError, setUploadError] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
+  const currentUser = getUser();
+
+  const canDeleteAttachment = (attachment) => {
+    if (!attachment) return false;
+    if (currentUser?.role === 'ADMIN') return true;
+    if (canDeleteCurrentAttachments) return true;
+    const currentNumericId = currentUser?.id ?? null;
+    if (currentNumericId != null) {
+      return String(currentNumericId) === String(attachment.uploadedById);
+    }
+    return currentUser?.userId != null && String(currentUser.userId) === String(attachment.uploadedById);
+  };
 
   const handleFileSelect = (e) => {
     const files = Array.from(e.target.files);
@@ -38,8 +58,21 @@ const AttachmentUpload = ({ ticketId, attachments = [] }) => {
       await uploadAttachments(ticketId, selectedFiles);
       setSelectedFiles([]);
       setUploadError('');
+      onChange?.();
     } catch (error) {
       setUploadError(error.response?.data?.message || 'Failed to upload files');
+    }
+  };
+
+  const handleDelete = async (attachmentId) => {
+    try {
+      setDeletingId(attachmentId);
+      await deleteAttachment(ticketId, attachmentId);
+      onChange?.();
+    } catch (error) {
+      setUploadError(error.response?.data?.message || 'Failed to delete attachment');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -54,12 +87,17 @@ const AttachmentUpload = ({ ticketId, attachments = [] }) => {
           multiple
           accept="image/jpeg,image/png,image/webp"
           onChange={handleFileSelect}
-          disabled={loading || attachments.length >= 3}
+          disabled={!canUpload || loading || attachments.length >= 3}
           className="w-full"
         />
         <p className="text-sm text-gray-500 mt-2">
           Max 3 files, 5MB each. Allowed: JPEG, PNG, WebP
         </p>
+        {!canUpload && (
+          <p className="text-sm text-amber-700 mt-2">
+            You can upload images only when you can edit or delete this ticket.
+          </p>
+        )}
       </div>
 
       {(uploadError || error) && (
@@ -68,7 +106,7 @@ const AttachmentUpload = ({ ticketId, attachments = [] }) => {
         </div>
       )}
 
-      {selectedFiles.length > 0 && (
+      {canUpload && selectedFiles.length > 0 && (
         <div className="mb-6">
           <h3 className="font-semibold text-gray-900 mb-2">Selected Files ({selectedFiles.length})</h3>
           <ul className="space-y-2 mb-4">
@@ -94,17 +132,23 @@ const AttachmentUpload = ({ ticketId, attachments = [] }) => {
           <h3 className="font-semibold text-gray-900 mb-3">Current Attachments</h3>
           <div className="grid gap-3 md:grid-cols-3">
             {attachments.map((attachment) => (
-              <a
-                key={attachment.id}
-                href={attachment.fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-              >
-                <p className="text-sm font-semibold text-blue-600 truncate">{attachment.filename}</p>
-                <p className="text-xs text-gray-500 mt-1">{attachment.uploadedByName}</p>
-                <p className="text-xs text-gray-400">{new Date(attachment.uploadedAt).toLocaleDateString()}</p>
-              </a>
+              <div key={attachment.id} className="p-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                <a href={attachment.fileUrl} target="_blank" rel="noopener noreferrer" className="block">
+                  <p className="text-sm font-semibold text-blue-600 truncate">{attachment.filename}</p>
+                  <p className="text-xs text-gray-500 mt-1">{attachment.uploadedByName}</p>
+                  <p className="text-xs text-gray-400">{new Date(attachment.uploadedAt).toLocaleDateString()}</p>
+                </a>
+                {canDeleteAttachment(attachment) && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(attachment.id)}
+                    disabled={loading || deletingId === attachment.id}
+                    className="mt-3 w-full bg-red-600 text-white px-3 py-2 rounded-lg hover:bg-red-700 disabled:bg-gray-400 transition text-sm"
+                  >
+                    {deletingId === attachment.id ? 'Deleting...' : 'Delete Image'}
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         </div>

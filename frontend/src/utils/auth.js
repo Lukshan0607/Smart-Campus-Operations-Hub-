@@ -23,6 +23,10 @@ export const clearSession = () => {
   localStorage.removeItem(USER_KEY);
 };
 
+export const logout = () => {
+  clearSession();
+};
+
 export const isAuthenticated = () => Boolean(getToken());
 
 export const hasRole = (role) => {
@@ -33,6 +37,7 @@ export const hasRole = (role) => {
 export const defaultDashboardPath = () => {
   const role = getUser()?.role;
   if (role === 'TECHNICIAN') return '/my-jobs';
-  if (role === 'ADMIN') return '/admin/tickets';
+  if (role === 'ADMIN') return '/admin/dashboard-new';
+  if (role === 'USER' || role === 'STUDENT' || role === 'LECTURER') return '/my-tickets';
   return '/my-tickets';
 };
