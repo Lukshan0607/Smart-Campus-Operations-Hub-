@@ -1,87 +1,126 @@
 package com.smartcampus.controller;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import com.smartcampus.entity.*;
+import com.smartcampus.repository.UserRepository;
+import com.smartcampus.security.JwtUtil;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.*;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
+@CrossOrigin(origins = "http://localhost:5173")
+@RequiredArgsConstructor
 public class AuthController {
 
-    private static final List<UserSummary> DEMO_TECHNICIANS = List.of(
-        new UserSummary(2L, "technician1", "TECHNICIAN", "Technician One"),
-        new UserSummary(3L, "tech-support", "TECHNICIAN", "Tech Support")
-    );
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
 
-    /**
-     * Simple login endpoint for demo/testing
-     * No authentication manager integration yet - just returns demo token
-     */
-    @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
-        // For demo purposes - accept any username with password "password"
-        if (request.password == null || !request.password.equals("password")) {
-            return ResponseEntity.status(401).build();
+    // ---------------- GOOGLE LOGIN SUCCESS ----------------
+    @GetMapping("/login-success")
+    public Map<String, Object> loginSuccess(@AuthenticationPrincipal OAuth2User user) {
+
+        return Map.of(
+                "message", "Google Login Successful!",
+                "email", user.getAttribute("email"),
+                "name", user.getAttribute("name"),
+                "picture", user.getAttribute("picture")
+        );
+    }
+
+    // ---------------- GOOGLE LOGIN FAILURE ----------------
+    @GetMapping("/login-failure")
+    public Map<String, String> loginFailure() {
+        return Map.of("error", "Login failed");
+    }
+
+    // ---------------- TEST CONNECTION ----------------
+    @GetMapping("/test")
+    public Map<String, String> testConnection() {
+        return Map.of(
+                "message", "Backend running",
+                "status", "OK"
+        );
+    }
+
+    // ---------------- SIGNUP ----------------
+    @PostMapping("/signup")
+    public Map<String, Object> signup(@RequestBody User request) {
+
+        if (userRepository.existsByEmail(request.getEmail())) {
+            return Map.of("error", "Email already exists");
         }
 
-        // Generate a simple token (in real app, use JWT with proper signing)
-        String token = "demo-token-" + System.currentTimeMillis();
-        String role = detectRole(request.username);
+        long count = userRepository.count() + 1;
+        String userId = String.format("USR%04d", count);
 
-        return ResponseEntity.ok(new LoginResponse(
-            token,
-            request.username,
-            role,
-            resolveUserId(request.username)
-        ));
+        User user = User.builder()
+                .userId(userId)
+                .name(request.getName())
+                .email(request.getEmail())
+                .phone(request.getPhone())
+                .password(passwordEncoder.encode(request.getPassword()))
+                .role(Role.USER)
+                .status("Active")
+                .provider(AuthProvider.LOCAL)
+                .build();
+
+        userRepository.save(user);
+
+        return Map.of(
+                "message", "Account created successfully",
+                "userId", userId
+        );
     }
 
-    @GetMapping("/technicians")
-    public ResponseEntity<List<UserSummary>> technicians() {
-        return ResponseEntity.ok(DEMO_TECHNICIANS);
-    }
+    // ---------------- LOGIN ----------------
+    @PostMapping("/login")
+    public Map<String, Object> login(@RequestBody Map<String, String> request) {
 
-    private String detectRole(String username) {
-        if (username.contains("admin")) return "ADMIN";
-        if (username.contains("tech")) return "TECHNICIAN";
-        if (username.contains("lecturer")) return "LECTURER";
-        return "STUDENT";
-    }
+        String email = request.get("email");
+        String password = request.get("password");
 
-    private Long resolveUserId(String username) {
-        if ("admin".equalsIgnoreCase(username)) return 99L;
-        if ("technician1".equalsIgnoreCase(username)) return 2L;
-        if ("tech-support".equalsIgnoreCase(username)) return 3L;
-        if ("lecturer1".equalsIgnoreCase(username)) return 10L;
-        return 1L;
-    }
+        Optional<User> optionalUser = userRepository.findByEmail(email);
 
-    @Data
-    @AllArgsConstructor
-    public static class LoginResponse {
-        private String token;
-        private String username;
-        private String role;
-        private Long userId;
-    }
+        if (optionalUser.isEmpty()) {
+            return Map.of("error", "Invalid email or password");
+        }
 
-    @Data
-    @NoArgsConstructor
-    public static class LoginRequest {
-        public String username;
-        public String password;
-    }
+        User user = optionalUser.get();
 
-    @Data
-    @AllArgsConstructor
-    public static class UserSummary {
-        private Long id;
-        private String username;
-        private String role;
-        private String displayName;
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            return Map.of("error", "Invalid email or password");
+        }
+
+        // Check user status
+        if (!"Active".equals(user.getStatus())) {
+            return Map.of("error", "Account is deactivated. Please contact administrator.");
+        }
+
+        // Allow all roles to login (USER, ADMIN, TECHNICIAN)
+
+        // generate JWT
+        String token = jwtUtil.generateToken(
+                user.getEmail(),
+                user.getRole().name()
+        );
+
+        return Map.of(
+                "message", "Login successful",
+                "token", token,
+                "user", Map.of(
+                        "userId", user.getUserId(),
+                        "name", user.getName(),
+                        "email", user.getEmail(),
+                        "role", user.getRole()
+                )
+        );
     }
 }
