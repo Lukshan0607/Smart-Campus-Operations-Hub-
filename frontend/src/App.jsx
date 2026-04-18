@@ -13,7 +13,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import { defaultDashboardPath } from './utils/auth';
 import MyTicketsDashboard from './pages/dashboard/MyTicketsDashboard';
 import TechnicianJobsDashboard from './pages/dashboard/TechnicianJobsDashboard';
-import AdminDashboard from './pages/dashboard/AdminDashboard';
+import AdminTicket from './pages/dashboard/AdminTicket';
 import AdminDashboardNew from './pages/dashboard/AdminDashboardNew';
 import AdminUserManagement from './pages/dashboard/AdminUserManagement';
 import CategoryPriorityDetailsPage from './pages/dashboard/CategoryPriorityDetailsPage';
@@ -64,7 +64,7 @@ function App() {
         path="/admin/tickets"
         element={
           <ProtectedRoute roles={["ADMIN"]}>
-            <AdminDashboard />
+            <AdminTicket />
           </ProtectedRoute>
         }
       />
