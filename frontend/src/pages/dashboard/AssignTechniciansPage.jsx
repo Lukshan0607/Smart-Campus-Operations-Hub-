@@ -87,11 +87,6 @@ const AssignTechniciansPage = () => {
       .filter(Boolean);
   };
 
-  const isTicketLocked = (status) => {
-    const lockedStatuses = ['COMPLETED', 'RESOLVED', 'REJECTED'];
-    return lockedStatuses.includes(status);
-  };
-
   const filteredTickets = tickets.filter((ticket) => ticket.status === filterStatus);
 
   return (
@@ -205,47 +200,40 @@ const AssignTechniciansPage = () => {
                       </ul>
                     </div>
 
-                    {isTicketLocked(ticket.status) ? (
-                      <div className="bg-red-50 border border-red-300 p-3 rounded">
-                        <p className="text-red-700 text-sm font-semibold">🔒 Ticket Locked</p>
-                        <p className="text-red-600 text-xs mt-1">Completed, resolved, or rejected tickets cannot be edited or assigned.</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            {isPrimaryAssigned ? 'Add Another Technician' : 'Assign Technician'}
-                          </label>
-                          <select
-                            value={selectedTechByTicket[ticket.id] || ''}
-                            onChange={(e) => handleTechnicianChange(ticket.id, e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                          >
-                            <option value="">-- Choose a technician --</option>
-                            {availableTechnicians.map((tech) => (
-                              <option key={tech.id} value={tech.id}>
-                                {tech.displayName || tech.username || `Technician #${tech.id}`} (#{tech.id})
-                              </option>
-                            ))}
-                          </select>
-                          {availableTechnicians.length === 0 && (
-                            <p className="text-xs text-gray-500 mt-2">All technicians are already assigned for this ticket.</p>
-                          )}
-                        </div>
-
-                        <button
-                          onClick={() => assign(ticket.id)}
-                          disabled={!selectedTechByTicket[ticket.id] || availableTechnicians.length === 0}
-                          className={`w-full px-4 py-2 rounded-lg font-semibold transition text-white ${
-                            selectedTechByTicket[ticket.id] && availableTechnicians.length > 0
-                              ? 'bg-green-600 hover:bg-green-700'
-                              : 'bg-gray-400 cursor-not-allowed'
-                          }`}
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                          {isPrimaryAssigned ? 'Add Another Technician' : 'Assign Technician'}
+                        </label>
+                        <select
+                          value={selectedTechByTicket[ticket.id] || ''}
+                          onChange={(e) => handleTechnicianChange(ticket.id, e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                         >
-                          {isPrimaryAssigned ? 'Add Technician' : 'Assign Technician'}
-                        </button>
+                          <option value="">-- Choose a technician --</option>
+                          {availableTechnicians.map((tech) => (
+                            <option key={tech.id} value={tech.id}>
+                              {tech.displayName || tech.username || `Technician #${tech.id}`} (#{tech.id})
+                            </option>
+                          ))}
+                        </select>
+                        {availableTechnicians.length === 0 && (
+                          <p className="text-xs text-gray-500 mt-2">All technicians are already assigned for this ticket.</p>
+                        )}
                       </div>
-                    )}
+
+                      <button
+                        onClick={() => assign(ticket.id)}
+                        disabled={!selectedTechByTicket[ticket.id] || availableTechnicians.length === 0}
+                        className={`w-full px-4 py-2 rounded-lg font-semibold transition text-white ${
+                          selectedTechByTicket[ticket.id] && availableTechnicians.length > 0
+                            ? 'bg-green-600 hover:bg-green-700'
+                            : 'bg-gray-400 cursor-not-allowed'
+                        }`}
+                      >
+                        {isPrimaryAssigned ? 'Add Technician' : 'Assign Technician'}
+                      </button>
+                    </div>
                   </div>
                 </div>
                   );
