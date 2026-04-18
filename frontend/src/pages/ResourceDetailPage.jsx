@@ -73,7 +73,7 @@ export default function ResourceDetailPage() {
             </p>
           </div>
           <Link
-            to={`/resources/${resource.id}/book`}
+            to={`/book/${resource.id}`}
             className="shrink-0 inline-flex justify-center px-5 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700"
           >
             Book

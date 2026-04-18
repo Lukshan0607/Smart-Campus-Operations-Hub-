@@ -4,6 +4,8 @@ import { useTickets } from '../../hooks/useTickets';
 import TicketDetail from '../../components/ticketing/TicketDetail';
 import TicketForm from '../../components/ticketing/TicketForm';
 import { getUser } from '../../utils/auth';
+import Header from '../../components/Header';
+import Footer from '../../components/Footer';
 
 const TicketDetailPage = () => {
   const { id } = useParams();
@@ -64,53 +66,81 @@ const TicketDetailPage = () => {
     : null;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <Link to="/tickets" className="text-blue-600 hover:text-blue-800 font-semibold">
-          ← Back to Tickets
-        </Link>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-red-800">
-          {error}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      <Header />
+      
+      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Breadcrumb Navigation */}
+        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-100 p-4">
+          <Link 
+            to="/tickets" 
+            className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-800 font-semibold transition-colors duration-200"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Tickets
+          </Link>
         </div>
-      )}
 
-      {canEdit && isEditing && editFormData ? (
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="flex items-center justify-between mb-6 border-b pb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Edit Ticket</h1>
-              <p className="text-gray-500 mt-1">Ticket #{selectedTicket?.id}</p>
-            </div>
-            <button
-              onClick={() => setIsEditing(false)}
-              className="text-gray-600 hover:text-gray-900 font-semibold"
-            >
-              Cancel
-            </button>
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 bg-red-50 border-l-4 border-red-400 rounded-lg p-4 flex items-start gap-3">
+            <svg className="w-5 h-5 text-red-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div className="text-red-800 font-medium">{error}</div>
           </div>
+        )}
 
-          <TicketForm
-            initialData={editFormData}
-            loading={loading}
-            onSubmit={handleTicketUpdate}
-            submitLabel="Save Changes"
-          />
-        </div>
-      ) : (
-        <TicketDetail
-          ticket={selectedTicket}
-          loading={loading}
-          onStatusUpdate={handleStatusUpdate}
-          isAdmin={false}
-          isTechnician={false}
-          canEdit={canEdit}
-          onEditTicket={() => setIsEditing(true)}
-          onAttachmentsChanged={() => fetchTicket(id)}
-        />
-      )}
+        {/* Edit Form */}
+        {canEdit && isEditing && editFormData ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between mb-6 border-b border-gray-100 p-6 pb-4">
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  Edit Ticket
+                </h1>
+                <p className="text-gray-500 mt-1">Ticket #{selectedTicket?.id}</p>
+              </div>
+              <button
+                onClick={() => setIsEditing(false)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg font-semibold transition-colors duration-200"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Cancel
+              </button>
+            </div>
+
+            <div className="p-6 pt-0">
+              <TicketForm
+                initialData={editFormData}
+                loading={loading}
+                onSubmit={handleTicketUpdate}
+                submitLabel="Save Changes"
+              />
+            </div>
+          </div>
+        ) : (
+          /* Ticket Detail View */
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <TicketDetail
+              ticket={selectedTicket}
+              loading={loading}
+              onStatusUpdate={handleStatusUpdate}
+              isAdmin={false}
+              isTechnician={false}
+              canEdit={canEdit}
+              onEditTicket={() => setIsEditing(true)}
+              onAttachmentsChanged={() => fetchTicket(id)}
+            />
+          </div>
+        )}
+      </main>
+      
+      <Footer />
     </div>
   );
 };

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../services/api";
+import { getUser } from "../utils/auth";
 
 // Helper: Get current date in YYYY-MM-DD
 const getCurrentDate = () => {
@@ -216,6 +217,9 @@ function CreateBookingPage() {
       const startTime = combineDateTime(formData.startDate, formData.startTime);
       const endTime = combineDateTime(formData.endDate, formData.endTime);
 
+      const user = getUser();
+      const userId = user?.id || 1; // Fallback to 1 for testing
+
       const payload = {
         resourceId: Number(resourceId),
         startTime,
@@ -225,7 +229,7 @@ function CreateBookingPage() {
         expectedAttendees: Number(formData.expectedAttendees),
       };
 
-      await api.post("/api/bookings?userId=1", payload);
+      await api.post(`/api/bookings?userId=${userId}`, payload);
 
       setMessage("Booking created successfully!");
       setMessageType("success");

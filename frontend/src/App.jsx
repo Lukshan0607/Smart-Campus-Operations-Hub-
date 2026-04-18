@@ -13,7 +13,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import { defaultDashboardPath } from './utils/auth';
 import MyTicketsDashboard from './pages/dashboard/MyTicketsDashboard';
 import TechnicianJobsDashboard from './pages/dashboard/TechnicianJobsDashboard';
-import AdminDashboard from './pages/dashboard/AdminDashboard';
+import AdminTicket from './pages/dashboard/AdminTicket';
 import AdminDashboardNew from './pages/dashboard/AdminDashboardNew';
 import AdminUserManagement from './pages/dashboard/AdminUserManagement';
 import CategoryPriorityDetailsPage from './pages/dashboard/CategoryPriorityDetailsPage';
@@ -22,6 +22,7 @@ import AssignTechniciansPage from './pages/dashboard/AssignTechniciansPage';
 import CreateBookingPage from "./pages/CreateBookingPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
 import AdminBookingsPage from "./pages/AdminBookingsPage";
+import AdminResources from "./pages/AdminResources";
 
 function App() {
   return (
@@ -33,10 +34,25 @@ function App() {
       <Route path="/admin/dashboard-new" element={<AdminDashboardNew />} />
       <Route path="/admin/user-management" element={<AdminUserManagement />} />
       <Route path="/dashboard" element={<Navigate to={defaultDashboardPath()} replace />} />
-      <Route path="/book/:resourceId" element={<CreateBookingPage />} />
-      <Route path="/my-bookings" element={<MyBookingsPage />} />
+      <Route
+        path="/book/:resourceId"
+        element={
+          <ProtectedRoute>
+            <CreateBookingPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/my-bookings"
+        element={
+          <ProtectedRoute>
+            <MyBookingsPage />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/admin/bookings" element={<AdminBookingsPage />} />
        <Route path="/resources" element={<ResourcesPage />} />
+       <Route path="/admin/resources" element={<AdminResources />} />
 
 
 
@@ -64,7 +80,7 @@ function App() {
         path="/admin/tickets"
         element={
           <ProtectedRoute roles={["ADMIN"]}>
-            <AdminDashboard />
+            <AdminTicket />
           </ProtectedRoute>
         }
       />

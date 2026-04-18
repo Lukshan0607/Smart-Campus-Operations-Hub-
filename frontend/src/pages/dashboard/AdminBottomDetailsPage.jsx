@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ticketApi from '../../api/ticketApi';
+import AdminSideNavigation from '../../components/admin/AdminSideNavigation';
 
 const AdminBottomDetailsPage = () => {
   const navigate = useNavigate();
@@ -48,19 +49,22 @@ const AdminBottomDetailsPage = () => {
   }, [tickets]);
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Admin Bottom Details</h1>
-          <p className="text-sm text-gray-500 mt-1">Additional detail page navigated from Admin Dashboard bottom section</p>
+    <div className="flex min-h-screen bg-gray-50">
+      <AdminSideNavigation activeSection="bottom-details" setActiveSection={() => {}} />
+      
+      <div className="flex-1 max-w-7xl mx-auto p-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Admin Bottom Details</h1>
+            <p className="text-sm text-gray-500 mt-1">Additional detail page navigated from Admin Dashboard bottom section</p>
+          </div>
+          <button
+            onClick={() => navigate('/admin/tickets')}
+            className="px-4 py-2 rounded-lg border bg-white text-gray-700 hover:bg-gray-50"
+          >
+            ← Back to Admin Dashboard
+          </button>
         </div>
-        <button
-          onClick={() => navigate('/admin/tickets')}
-          className="px-4 py-2 rounded-lg border bg-white text-gray-700 hover:bg-gray-50"
-        >
-          ← Back to Admin Dashboard
-        </button>
-      </div>
 
       {loading && <p className="text-gray-600">Loading...</p>}
       {error && <p className="text-red-600 mb-4">{error}</p>}
@@ -97,6 +101,7 @@ const AdminBottomDetailsPage = () => {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 };

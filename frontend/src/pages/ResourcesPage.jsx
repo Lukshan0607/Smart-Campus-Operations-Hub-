@@ -205,7 +205,7 @@ export default function ResourcesPage() {
                       Details
                     </Link>
                     <Link
-                      to={`/resources/${r.id}/book`}
+                      to={`/book/${r.id}`}
                       className="flex-1 text-center py-2 rounded-lg bg-indigo-600 text-sm font-medium text-white hover:bg-indigo-700"
                     >
                       Book

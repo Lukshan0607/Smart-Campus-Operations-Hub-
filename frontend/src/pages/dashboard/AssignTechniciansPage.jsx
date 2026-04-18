@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ticketApi from '../../api/ticketApi';
 import authApi from '../../api/authApi';
+import AdminSideNavigation from '../../components/admin/AdminSideNavigation';
 
 const AssignTechniciansPage = () => {
   const navigate = useNavigate();
@@ -81,37 +82,40 @@ const AssignTechniciansPage = () => {
   const filteredTickets = tickets.filter((ticket) => ticket.status === filterStatus);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-6 px-4 shadow-lg">
-        <div className="max-w-7xl mx-auto">
-          <button
-            onClick={() => navigate('/admin/dashboard')}
-            className="flex items-center gap-2 text-white hover:bg-white hover:bg-opacity-20 px-3 py-2 rounded-lg transition mb-4"
-          >
-            ← Back to Dashboard
-          </button>
-          <h1 className="text-3xl font-bold">Assign Technicians</h1>
-          <p className="text-blue-100 mt-2">Quickly assign technicians to tickets and manage workload distribution</p>
+    <div className="flex min-h-screen bg-gray-50">
+      <AdminSideNavigation activeSection="assign-technicians" setActiveSection={() => {}} />
+      
+      <div className="flex-1">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-6 px-4 shadow-lg">
+          <div className="max-w-7xl mx-auto">
+            <button
+              onClick={() => navigate('/admin/tickets')}
+              className="flex items-center gap-2 text-white hover:bg-white hover:bg-opacity-20 px-3 py-2 rounded-lg transition mb-4"
+            >
+              &larr; Back to Admin Dashboard
+            </button>
+            <h1 className="text-3xl font-bold">Assign Technicians</h1>
+            <p className="text-blue-100 mt-2">Quickly assign technicians to tickets and manage workload distribution</p>
+          </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto py-8 px-4">
-        {/* Messages */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-red-800">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 text-green-800">
-            {success}
-          </div>
-        )}
+        {/* Content */}
+        <div className="max-w-7xl mx-auto py-8 px-4">
+          {/* Messages */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-red-800">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6 text-green-800">
+              {success}
+            </div>
+          )}
 
-        {/* Filter Tabs */}
-        <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+          {/* Filter Tabs */}
+          <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
           <p className="text-sm font-semibold text-gray-700 mb-3">Filter by Status</p>
           <div className="flex flex-wrap gap-2">
             {STATUSES.map((status) => (
@@ -204,6 +208,7 @@ const AssignTechniciansPage = () => {
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   );
