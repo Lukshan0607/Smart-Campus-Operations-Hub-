@@ -2,7 +2,13 @@ import React, { useState } from 'react';
 import { useTickets } from '../../hooks/useTickets';
 import { getUser } from '../../utils/auth';
 
-const AttachmentUpload = ({ ticketId, attachments = [], onChange, canUpload = true }) => {
+const AttachmentUpload = ({
+  ticketId,
+  attachments = [],
+  onChange,
+  canUpload = true,
+  canDeleteCurrentAttachments = false,
+}) => {
   const { uploadAttachments, deleteAttachment, loading, error } = useTickets();
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadError, setUploadError] = useState('');
@@ -12,6 +18,7 @@ const AttachmentUpload = ({ ticketId, attachments = [], onChange, canUpload = tr
   const canDeleteAttachment = (attachment) => {
     if (!attachment) return false;
     if (currentUser?.role === 'ADMIN') return true;
+    if (canDeleteCurrentAttachments) return true;
     const currentNumericId = currentUser?.id ?? null;
     if (currentNumericId != null) {
       return String(currentNumericId) === String(attachment.uploadedById);

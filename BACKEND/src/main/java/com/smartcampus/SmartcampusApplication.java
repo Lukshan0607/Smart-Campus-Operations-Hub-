@@ -104,6 +104,19 @@ public class SmartcampusApplication {
 			createDefaultUserIfMissing(userRepository, passwordEncoder,
 				"TEC0001", "Technician One", "technician@smartcampus.com", "0770000002", "tech123", Role.TECHNICIAN);
 
+			for (int i = 2; i <= 12; i++) {
+				createDefaultUserIfMissing(
+						userRepository,
+						passwordEncoder,
+						String.format("TEC%04d", i),
+						"Technician " + i,
+						"technician" + i + "@smartcampus.com",
+						String.format("0770000%03d", i),
+						"tech123",
+						Role.TECHNICIAN
+				);
+			}
+
 			createDefaultUserIfMissing(userRepository, passwordEncoder,
 				"STU0001", "Student User", "student@smartcampus.com", "0770000003", "student123", Role.USER);
 

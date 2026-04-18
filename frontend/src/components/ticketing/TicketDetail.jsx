@@ -278,6 +278,7 @@ const TicketDetail = ({
         attachments={ticket.attachments || []}
         onChange={onAttachmentsChanged}
         canUpload={canSubmitImage}
+        canDeleteCurrentAttachments={canSubmitImage}
       />
 
       {/* Comments */}

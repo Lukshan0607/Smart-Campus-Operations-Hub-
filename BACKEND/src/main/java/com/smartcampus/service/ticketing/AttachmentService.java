@@ -1,9 +1,11 @@
 package com.smartcampus.service.ticketing;
 
 import com.smartcampus.dto.ticketing.AttachmentDTO;
+import com.smartcampus.entity.User;
 import com.smartcampus.entity.ticketing.Attachment;
 import com.smartcampus.entity.ticketing.Ticket;
 import com.smartcampus.exception.ticketing.TicketNotFoundException;
+import com.smartcampus.repository.UserRepository;
 import com.smartcampus.repository.ticketing.AttachmentRepository;
 import com.smartcampus.repository.ticketing.TicketRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,12 +21,17 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 @Service
 @RequiredArgsConstructor
 public class AttachmentService {
 
     private final AttachmentRepository attachmentRepository;
     private final TicketRepository ticketRepository;
+    private final UserRepository userRepository;
 
     private static final String UPLOAD_DIR = "uploads/tickets/";
 
@@ -79,8 +86,14 @@ public class AttachmentService {
         // Check authorization
         Long userId = extractUserIdFromContext();
         boolean isOwner = attachment.getUploadedById() != null && attachment.getUploadedById().equals(userId);
-        if (!isOwner) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own attachments");
+        boolean isAdmin = hasRole("ADMIN");
+        boolean isTicketSubmitter = attachment.getTicket() != null
+            && attachment.getTicket().getCreatorId() != null
+            && attachment.getTicket().getCreatorId().equals(userId);
+
+        if (!isOwner && !isAdmin && !isTicketSubmitter) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "Only uploader, ticket submitter, or admin can delete this attachment");
         }
 
         try {
@@ -161,7 +174,22 @@ public class AttachmentService {
             return null;
         }
 
-        String normalized = username.trim().toLowerCase();
+        String raw = username.trim();
+        if (raw.matches("\\d+")) {
+            try {
+                return Long.parseLong(raw);
+            } catch (NumberFormatException ignored) {
+            }
+        }
+
+        Long resolvedFromEmail = userRepository.findByEmail(raw)
+                .map(User::getId)
+                .orElse(null);
+        if (resolvedFromEmail != null) {
+            return resolvedFromEmail;
+        }
+
+        String normalized = raw.toLowerCase();
         return switch (normalized) {
             case "admin" -> 99L;
             case "technician1" -> 2L;
@@ -169,5 +197,17 @@ public class AttachmentService {
             case "lecturer1" -> 10L;
             default -> null;
         };
+    }
+
+    private boolean hasRole(String role) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || authentication.getAuthorities() == null) {
+            return false;
+        }
+
+        return authentication.getAuthorities()
+                .stream()
+                .map(GrantedAuthority::getAuthority)
+                .anyMatch(auth -> auth.equals("ROLE_" + role));
     }
 }
