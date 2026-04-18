@@ -113,12 +113,12 @@ const AdminTicket = () => {
         const apiRows = Array.isArray(res.data) ? res.data : [];
         if (apiRows.length > 0) {
           setReportData(apiRows);
+          setError('');
           return;
         }
         setReportData(buildFallbackReportData(reportPeriod));
       } catch (err) {
         setReportData(buildFallbackReportData(reportPeriod));
-        setError(err.response?.data?.message || 'Failed to load ticket reports (showing fallback data)');
       }
     };
 

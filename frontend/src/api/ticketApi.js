@@ -132,6 +132,17 @@ const ticketApi = {
     applyAuthHeader();
     return axios.get(`${API_BASE}/tickets/${ticketId}/comments`);
   },
+
+  // Report endpoints
+  getMonthlyReports: (year) => {
+    applyAuthHeader();
+    return axios.get(`${API_BASE}/tickets/reports/monthly`, { params: { year } });
+  },
+
+  getYearlyReports: () => {
+    applyAuthHeader();
+    return axios.get(`${API_BASE}/tickets/reports/yearly`);
+  },
 };
 
 export default ticketApi;
