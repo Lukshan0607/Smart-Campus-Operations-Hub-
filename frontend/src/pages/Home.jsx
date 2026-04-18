@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Hero from '../components/Hero';
+import Header from '../components/Header';
+import Footer from '../components/Footer';
 import { FiBookOpen, FiCalendar, FiTool, FiUsers, FiTrendingUp, FiClock, FiMapPin, FiFilter } from 'react-icons/fi';
 
 const Home = () => {
@@ -128,6 +130,7 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Header />
       <Hero />
 
       <main className="w-full py-12">
@@ -297,6 +300,7 @@ const Home = () => {
           </div>
         </div>
       </main>
+      <Footer />
     </div>
   );
 };
