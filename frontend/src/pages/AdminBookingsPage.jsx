@@ -29,6 +29,8 @@ function AdminBookingsPage() {
     }
   };
 
+  //booking
+
   useEffect(() => {
     fetchBookings();
   }, []);
