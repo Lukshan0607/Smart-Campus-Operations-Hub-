@@ -21,11 +21,18 @@ const TicketDetailPage = () => {
     setIsEditing(false);
   }, [selectedTicket?.id]);
 
+  const isTicketLocked = useMemo(() => {
+    if (!selectedTicket) return false;
+    const lockedStatuses = ['COMPLETED', 'RESOLVED', 'REJECTED'];
+    return lockedStatuses.includes(selectedTicket.status);
+  }, [selectedTicket]);
+
   const canEdit = useMemo(() => {
     if (!selectedTicket || !currentUser) return false;
+    if (isTicketLocked) return false;
     if (currentUser.role === 'ADMIN') return true;
     return String(selectedTicket.creatorId) === String(currentUser.userId);
-  }, [selectedTicket, currentUser]);
+  }, [selectedTicket, currentUser, isTicketLocked]);
 
   const handleStatusUpdate = async (ticketId, status, resolutionNote) => {
     try {

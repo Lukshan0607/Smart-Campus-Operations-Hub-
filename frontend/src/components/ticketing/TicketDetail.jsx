@@ -129,24 +129,43 @@ const TicketDetail = ({
       )}
 
       {/* Action Buttons */}
-      {(isTechnician || isAdmin) && ticket.status !== 'CLOSED' && (
-        <div className="mb-6 pb-6 border-b flex gap-3">
-          <button
-            onClick={() => setShowStatusModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-          >
-            Update Status
-          </button>
-          {isAdmin && !ticket.assignedTechnicianId && (
-            <button
-              onClick={() => onAssignTechnician?.(ticket.id)}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
-            >
-              Assign Technician
-            </button>
-          )}
-        </div>
-      )}
+      {(() => {
+        const lockedStatuses = ['COMPLETED', 'RESOLVED', 'REJECTED'];
+        const isLocked = lockedStatuses.includes(ticket.status);
+        const canUpdateStatus = (isTechnician || isAdmin) && ticket.status !== 'CLOSED' && !isLocked;
+        const canAssignTechnician = isAdmin && !ticket.assignedTechnicianId && !isLocked;
+
+        return (
+          <>
+            {(canUpdateStatus || canAssignTechnician) && (
+              <div className="mb-6 pb-6 border-b flex gap-3">
+                {canUpdateStatus && (
+                  <button
+                    onClick={() => setShowStatusModal(true)}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Update Status
+                  </button>
+                )}
+                {canAssignTechnician && (
+                  <button
+                    onClick={() => onAssignTechnician?.(ticket.id)}
+                    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition"
+                  >
+                    Assign Technician
+                  </button>
+                )}
+              </div>
+            )}
+            {isLocked && (
+              <div className="mb-6 pb-6 border-b bg-gray-100 p-4 rounded border border-gray-300">
+                <p className="text-gray-700 font-semibold">⚠️ This ticket is locked and cannot be edited or reassigned.</p>
+                <p className="text-gray-600 text-sm mt-1">Tickets with status {lockedStatuses.join(', ')} are read-only.</p>
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {canEdit && (
         <div className="mb-6 pb-6 border-b flex gap-3">
