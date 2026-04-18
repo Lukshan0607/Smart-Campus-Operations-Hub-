@@ -4,6 +4,8 @@ import com.smartcampus.dto.NotificationDTO;
 import com.smartcampus.entity.Notification;
 import com.smartcampus.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -14,14 +16,21 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationService {
 
+    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
+
     private final NotificationRepository notificationRepository;
 
     public void create(Long userId, String username, String title, String message) {
+        if (userId == null) {
+            log.warn("Skipping notification because userId is null. title={}, message={}", title, message);
+            return;
+        }
+
         Notification n = new Notification();
         n.setUserId(userId);
-        n.setUsername(username);
-        n.setTitle(title);
-        n.setMessage(message);
+        n.setUsername(username != null && !username.isBlank() ? username : "system");
+        n.setTitle(title != null && !title.isBlank() ? title : "Notification");
+        n.setMessage(message != null && !message.isBlank() ? message : "Update available");
         n.setRead(false);
         notificationRepository.save(n);
     }

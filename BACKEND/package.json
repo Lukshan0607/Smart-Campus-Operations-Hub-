@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "prebackend": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$conn=Get-NetTCPConnection -LocalPort 8083 -State Listen -ErrorAction SilentlyContinue; if($conn){$conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }}; exit 0\"",
-    "backend": "npm run backend:local",
+    "backend": "npm run backend:mysql",
     "prebackend:local": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$conn=Get-NetTCPConnection -LocalPort 8083 -State Listen -ErrorAction SilentlyContinue; if($conn){$conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }}; exit 0\"",
     "backend:local": "mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=local",
     "prebackend:verbose": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"$conn=Get-NetTCPConnection -LocalPort 8083 -State Listen -ErrorAction SilentlyContinue; if($conn){$conn | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }}; exit 0\"",

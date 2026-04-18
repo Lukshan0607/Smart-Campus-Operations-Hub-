@@ -196,13 +196,15 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + id));
 
+        String technicianDisplayName = resolveTechnicianDisplayName(technicianId);
+
         ticket.setAssignedTechnicianId(technicianId);
-        ticket.setAssignedTechnicianName("technician-" + technicianId);
+        ticket.setAssignedTechnicianName(technicianDisplayName);
         ticket.setStatus(TicketStatus.IN_PROGRESS);
 
         Ticket updated = ticketRepository.save(ticket);
 
-        notificationService.create(technicianId, "technician-" + technicianId,
+        notificationService.create(technicianId, technicianDisplayName,
                 "New assigned ticket", "Ticket #" + ticket.getId() + " assigned to you.");
         notificationService.create(ticket.getCreatorId(), ticket.getCreatorName(),
                 "Technician assigned", "A technician was assigned to ticket #" + ticket.getId() + ".");
@@ -397,6 +399,18 @@ public class TicketService {
             case "tech-support" -> 3L;
             case "lecturer1" -> 10L;
             default -> null;
+        };
+    }
+
+    private String resolveTechnicianDisplayName(Long technicianId) {
+        if (technicianId == null) {
+            return "technician";
+        }
+
+        return switch (technicianId.intValue()) {
+            case 2 -> "Technician One";
+            case 3 -> "Tech Support";
+            default -> "technician-" + technicianId;
         };
     }
 

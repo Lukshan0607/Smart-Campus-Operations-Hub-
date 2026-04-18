@@ -87,7 +87,7 @@ const AssignTechniciansPage = () => {
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-6 px-4 shadow-lg">
         <div className="max-w-7xl mx-auto">
           <button
-            onClick={() => navigate('/admin/dashboard')}
+            onClick={() => navigate('/admin/tickets')}
             className="flex items-center gap-2 text-white hover:bg-white hover:bg-opacity-20 px-3 py-2 rounded-lg transition mb-4"
           >
             ← Back to Dashboard
@@ -160,14 +160,14 @@ const AssignTechniciansPage = () => {
                       <span><strong>Priority:</strong> {ticket.priority}</span>
                     </div>
                     <div className="mt-2 text-sm text-gray-600">
-                      <strong>Reported by:</strong> {ticket.reportedByName || 'Unknown'}
+                      <strong>Reported by:</strong> {ticket.creatorName || 'Unknown'}
                     </div>
                   </div>
 
                   {/* Assignment Section */}
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <p className="text-sm font-semibold text-gray-700 mb-3">
-                      Current Assignee: <span className="text-blue-600">{ticket.assignedToName || 'Unassigned'}</span>
+                      Current Assignee: <span className="text-blue-600">{ticket.assignedTechnicianName || 'Unassigned'}</span>
                     </p>
 
                     <div className="space-y-3">
@@ -181,7 +181,7 @@ const AssignTechniciansPage = () => {
                           <option value="">-- Choose a technician --</option>
                           {technicians.map((tech) => (
                             <option key={tech.id} value={tech.id}>
-                              {tech.firstName} {tech.lastName} ({tech.email})
+                              {tech.displayName || tech.username || `Technician #${tech.id}`} (#{tech.id})
                             </option>
                           ))}
                         </select>

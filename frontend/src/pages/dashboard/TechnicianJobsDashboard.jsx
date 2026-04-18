@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import ticketApi from '../../api/ticketApi';
+import { getUser } from '../../utils/auth';
 
 const TechnicianJobsDashboard = () => {
   const [jobs, setJobs] = React.useState([]);
@@ -12,8 +13,17 @@ const TechnicianJobsDashboard = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const res = await ticketApi.listTechnicianJobs();
-      setJobs(Array.isArray(res.data) ? res.data : []);
+      const currentUser = getUser();
+      const isAdmin = currentUser?.role === 'ADMIN';
+
+      if (isAdmin) {
+        const res = await ticketApi.listTickets();
+        const allTickets = Array.isArray(res.data) ? res.data : [];
+        setJobs(allTickets.filter((ticket) => ticket.assignedTechnicianId != null));
+      } else {
+        const res = await ticketApi.listTechnicianJobs();
+        setJobs(Array.isArray(res.data) ? res.data : []);
+      }
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load assigned jobs');
@@ -73,6 +83,12 @@ const TechnicianJobsDashboard = () => {
       <h1 className="text-2xl font-bold mb-4">My Assigned Jobs</h1>
       {loading && <p>Loading...</p>}
       {error && <p className="text-red-600">{error}</p>}
+      {!loading && !error && jobs.length === 0 && (
+        <p className="text-gray-600 border rounded p-3 bg-gray-50">
+          No assigned jobs found. If you are a technician, ask admin to assign a ticket. If you are an admin,
+          create/assign tickets from the admin dashboard first.
+        </p>
+      )}
       <div className="grid gap-3">
         {jobs.map((t) => (
           <div key={t.id} className="border rounded p-4">
