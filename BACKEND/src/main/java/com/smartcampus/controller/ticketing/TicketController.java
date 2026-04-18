@@ -163,6 +163,32 @@ public class TicketController {
         return ResponseEntity.noContent().build();
     }
 
+    @PatchMapping("/{id}/remove-technician/{technicianId}")
+    public ResponseEntity<TicketResponseDTO> removeTechnician(@PathVariable Long id,
+                                                               @PathVariable Long technicianId,
+                                                               Principal principal) {
+        String username = principal != null ? principal.getName() : "admin";
+        TicketResponseDTO updated = ticketService.removeTechnician(id, technicianId, username);
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTicket(@PathVariable Long id,
+                                             Principal principal) {
+        String username = principal != null ? principal.getName() : "admin";
+        ticketService.deleteTicket(id, username);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/category")
+    public ResponseEntity<TicketResponseDTO> updateCategory(@PathVariable Long id,
+                                                             @Valid @RequestBody CategoryUpdateRequest request,
+                                                             Principal principal) {
+        String username = principal != null ? principal.getName() : "admin";
+        TicketResponseDTO updated = ticketService.updateCategory(id, request.getCategory(), username);
+        return ResponseEntity.ok(updated);
+    }
+
     public static class AssignRequest {
         @NotNull
         private Long technicianId;
@@ -256,6 +282,19 @@ public class TicketController {
 
         public void setWarningMessage(String warningMessage) {
             this.warningMessage = warningMessage;
+        }
+    }
+
+    public static class CategoryUpdateRequest {
+        @NotBlank
+        private String category;
+
+        public String getCategory() {
+            return category;
+        }
+
+        public void setCategory(String category) {
+            this.category = category;
         }
     }
 }

@@ -6,8 +6,13 @@ const API_BASE = '/api';
 const applyAuthHeader = () => {
   const token = getToken();
   const user = getUser();
-  if (token) {
+  
+  // Only set Authorization header if token exists and is valid
+  if (token && token.trim().length > 0) {
     axios.defaults.headers.common.Authorization = `Bearer ${token}`;
+  } else {
+    // Remove invalid authorization header
+    delete axios.defaults.headers.common.Authorization;
   }
 
   if (user?.userId != null) {
@@ -131,6 +136,21 @@ const ticketApi = {
   getComments: (ticketId) => {
     applyAuthHeader();
     return axios.get(`${API_BASE}/tickets/${ticketId}/comments`);
+  },
+
+  removeTechnician: (ticketId, technicianId) => {
+    applyAuthHeader();
+    return axios.patch(`${API_BASE}/tickets/${ticketId}/remove-technician/${technicianId}`);
+  },
+
+  deleteTicket: (ticketId) => {
+    applyAuthHeader();
+    return axios.delete(`${API_BASE}/tickets/${ticketId}`);
+  },
+
+  updateCategory: (ticketId, category) => {
+    applyAuthHeader();
+    return axios.patch(`${API_BASE}/tickets/${ticketId}/category`, { category });
   },
 };
 

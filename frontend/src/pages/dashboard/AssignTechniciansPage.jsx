@@ -13,8 +13,12 @@ const AssignTechniciansPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [filterStatus, setFilterStatus] = useState('OPEN');
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [editingCategory, setEditingCategory] = useState('');
+  const [deletingTicketId, setDeletingTicketId] = useState(null);
 
   const STATUSES = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED', 'REJECTED'];
+  const FINAL_STATUSES = ['RESOLVED', 'CLOSED', 'REJECTED'];
   const STATUS_COLORS = {
     OPEN: 'bg-blue-100 text-blue-800',
     IN_PROGRESS: 'bg-yellow-100 text-yellow-800',
@@ -51,6 +55,24 @@ const AssignTechniciansPage = () => {
     loadTechnicians();
   }, []);
 
+  const parseCsvValues = (value) => {
+    if (!value) return [];
+    return String(value)
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  };
+
+  const isUpcomingWithinMonth = (ticket) => {
+    if (!ticket?.expectedCompletionAt) return false;
+    const deadline = new Date(ticket.expectedCompletionAt);
+    if (Number.isNaN(deadline.getTime())) return false;
+    const now = new Date();
+    const oneMonthLater = new Date(now);
+    oneMonthLater.setMonth(oneMonthLater.getMonth() + 1);
+    return deadline >= now && deadline <= oneMonthLater;
+  };
+
   const assign = async (ticketId) => {
     const technicianId = selectedTechByTicket[ticketId];
     if (!technicianId) {
@@ -79,7 +101,51 @@ const AssignTechniciansPage = () => {
     }));
   };
 
-  const filteredTickets = tickets.filter((ticket) => ticket.status === filterStatus);
+  const removeTechnician = async (ticketId, technicianId) => {
+    try {
+      await ticketApi.removeTechnician(ticketId, Number(technicianId));
+      setSuccess('Technician removed successfully');
+      setTimeout(() => setSuccess(''), 3000);
+      load();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to remove technician');
+    }
+  };
+
+  const saveCategory = async (ticketId, newCategory) => {
+    if (!newCategory || newCategory.trim() === '') {
+      setError('Category cannot be empty');
+      return;
+    }
+    try {
+      await ticketApi.updateCategory(ticketId, newCategory);
+      setSuccess('Category updated successfully');
+      setTimeout(() => setSuccess(''), 3000);
+      setEditingCategoryId(null);
+      setEditingCategory('');
+      load();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update category');
+    }
+  };
+
+  const deleteTicketConfirm = async (ticketId) => {
+    try {
+      await ticketApi.deleteTicket(ticketId);
+      setSuccess('Ticket deleted successfully');
+      setTimeout(() => setSuccess(''), 3000);
+      setDeletingTicketId(null);
+      load();
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || err.message || 'Failed to delete ticket';
+      setError(errorMsg);
+      setDeletingTicketId(null);
+    }
+  };
+
+  const filteredTickets = tickets
+    .filter((ticket) => ticket.status === filterStatus)
+    .filter((ticket) => isUpcomingWithinMonth(ticket));
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -96,7 +162,7 @@ const AssignTechniciansPage = () => {
               &larr; Back to Admin Dashboard
             </button>
             <h1 className="text-3xl font-bold">Assign Technicians</h1>
-            <p className="text-blue-100 mt-2">Quickly assign technicians to tickets and manage workload distribution</p>
+            <p className="text-blue-100 mt-2">Upcoming tickets (next 1 month) with technician assignment and locked final states</p>
           </div>
         </div>
 
@@ -141,12 +207,23 @@ const AssignTechniciansPage = () => {
           </div>
         ) : filteredTickets.length === 0 ? (
           <div className="bg-white rounded-lg border p-8 text-center">
-            <p className="text-gray-600 text-lg">No tickets with status "{filterStatus}" found</p>
+            <p className="text-gray-600 text-lg">No upcoming tickets with status "{filterStatus}" found for the next month</p>
           </div>
         ) : (
           <div className="space-y-4">
             {filteredTickets.map((ticket) => (
               <div key={ticket.id} className="bg-white border rounded-lg p-5 shadow-sm hover:shadow-md transition">
+                {(() => {
+                  const additionalIds = parseCsvValues(ticket.additionalTechnicianIds);
+                  const additionalNames = parseCsvValues(ticket.additionalTechnicianNames);
+                  const assignedIds = new Set([
+                    ...(ticket.assignedTechnicianId ? [String(ticket.assignedTechnicianId)] : []),
+                    ...additionalIds,
+                  ]);
+                  const availableTechnicians = technicians.filter((tech) => !assignedIds.has(String(tech.id)));
+                  const isFinalStatus = FINAL_STATUSES.includes(ticket.status);
+
+                  return (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start mb-4">
                   {/* Ticket Info */}
                   <div>
@@ -159,19 +236,106 @@ const AssignTechniciansPage = () => {
                     <p className="text-gray-700 mb-2">{ticket.title}</p>
                     <p className="text-sm text-gray-600">{ticket.description}</p>
                     <div className="mt-3 flex gap-4 text-sm text-gray-600">
-                      <span><strong>Category:</strong> {ticket.category}</span>
+                      <div>
+                        <strong>Category:</strong>{' '}
+                        {editingCategoryId === ticket.id ? (
+                          <div className="flex gap-2 mt-1">
+                            <input
+                              type="text"
+                              value={editingCategory}
+                              onChange={(e) => setEditingCategory(e.target.value)}
+                              className="px-2 py-1 border border-gray-300 rounded text-sm"
+                            />
+                            <button
+                              onClick={() => saveCategory(ticket.id, editingCategory)}
+                              className="px-2 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingCategoryId(null)}
+                              className="px-2 py-1 bg-gray-400 text-white rounded text-sm hover:bg-gray-500"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span>{ticket.category}</span>
+                            {!isFinalStatus && (
+                              <button
+                                onClick={() => {
+                                  setEditingCategoryId(ticket.id);
+                                  setEditingCategory(ticket.category);
+                                }}
+                                className="text-blue-600 hover:underline text-xs"
+                              >
+                                Edit
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
                       <span><strong>Priority:</strong> {ticket.priority}</span>
                     </div>
                     <div className="mt-2 text-sm text-gray-600">
-                      <strong>Reported by:</strong> {ticket.reportedByName || 'Unknown'}
+                      <strong>Reported by:</strong> {ticket.creatorName || 'Unknown'}
+                    </div>
+                    <div className="mt-2 text-sm text-gray-600">
+                      <strong>Expected completion:</strong>{' '}
+                      {ticket.expectedCompletionAt ? new Date(ticket.expectedCompletionAt).toLocaleString() : 'Not set'}
                     </div>
                   </div>
 
                   {/* Assignment Section */}
                   <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                     <p className="text-sm font-semibold text-gray-700 mb-3">
-                      Current Assignee: <span className="text-blue-600">{ticket.assignedToName || 'Unassigned'}</span>
+                      Primary Assignee:{' '}
+                      <span className="text-blue-600">{ticket.assignedTechnicianName || 'Unassigned'}</span>
                     </p>
+
+                    {(ticket.assignedTechnicianName || additionalNames.length > 0) && (
+                      <div className="mb-3 p-3 rounded border bg-white">
+                        <p className="text-xs font-semibold text-gray-600 mb-2">Assigned Technicians</p>
+                        <ul className="text-sm text-gray-700 space-y-2">
+                          {ticket.assignedTechnicianName && (
+                            <li className="flex items-center justify-between">
+                              <span>• {ticket.assignedTechnicianName} (Primary)</span>
+                              {!isFinalStatus && (additionalNames.length > 0 || availableTechnicians.length > 0) && (
+                                <button
+                                  onClick={() => removeTechnician(ticket.id, ticket.assignedTechnicianId)}
+                                  className="text-red-600 hover:text-red-800 text-xs font-semibold"
+                                >
+                                  Remove
+                                </button>
+                              )}
+                            </li>
+                          )}
+                          {additionalNames.map((name, idx) => {
+                            const techId = additionalIds[idx];
+                            return (
+                              <li key={`${ticket.id}-additional-${idx}`} className="flex items-center justify-between">
+                                <span>• {name} (Additional)</span>
+                                {!isFinalStatus && (
+                                  <button
+                                    onClick={() => removeTechnician(ticket.id, techId)}
+                                    className="text-red-600 hover:text-red-800 text-xs font-semibold"
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
+
+                    {isFinalStatus ? (
+                      <div className="p-3 rounded border bg-gray-100 text-sm text-gray-600">
+                        This ticket is {ticket.status}. Assignment is locked and cannot be edited.
+                      </div>
+                    ) : (
 
                     <div className="space-y-3">
                       <div>
@@ -182,11 +346,15 @@ const AssignTechniciansPage = () => {
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                         >
                           <option value="">-- Choose a technician --</option>
-                          {technicians.map((tech) => (
-                            <option key={tech.id} value={tech.id}>
-                              {tech.firstName} {tech.lastName} ({tech.email})
-                            </option>
-                          ))}
+                          {technicians.map((tech) => {
+                            const isAlreadyAssigned = assignedIds.has(String(tech.id));
+                            return (
+                              <option key={tech.id} value={tech.id}>
+                                {tech.displayName || tech.name || tech.email} ({tech.email})
+                                {isAlreadyAssigned ? ' ✓ (Already assigned)' : ''}
+                              </option>
+                            );
+                          })}
                         </select>
                       </div>
 
@@ -199,11 +367,42 @@ const AssignTechniciansPage = () => {
                             : 'bg-gray-400 cursor-not-allowed'
                         }`}
                       >
-                        Assign Technician
+                        {ticket.assignedTechnicianId ? 'Add Technician' : 'Assign Technician'}
+                      </button>
+
+                      <button
+                        onClick={() => setDeletingTicketId(ticket.id)}
+                        className="w-full px-4 py-2 rounded-lg font-semibold transition text-white bg-red-600 hover:bg-red-700"
+                      >
+                        Delete Ticket
                       </button>
                     </div>
+                    )}
+
+                    {/* Delete Ticket Confirmation */}
+                    {deletingTicketId === ticket.id && (
+                      <div className="mt-4 p-3 rounded border bg-red-50 border-red-300">
+                        <p className="text-sm text-red-800 mb-3">Are you sure you want to delete this ticket? This action cannot be undone.</p>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => deleteTicketConfirm(ticket.id)}
+                            className="px-4 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 font-semibold"
+                          >
+                            Yes, Delete
+                          </button>
+                          <button
+                            onClick={() => setDeletingTicketId(null)}
+                            className="px-4 py-2 bg-gray-400 text-white rounded text-sm hover:bg-gray-500 font-semibold"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
+                  );
+                })()}
               </div>
             ))}
           </div>

@@ -51,6 +51,10 @@ public class TicketResponseDTO {
 
     private String assignedTechnicianName;
 
+    private String additionalTechnicianIds;
+
+    private String additionalTechnicianNames;
+
     private String resolutionNote;
 
     private String completionNotes;

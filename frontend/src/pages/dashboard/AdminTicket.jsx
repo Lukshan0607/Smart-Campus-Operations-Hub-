@@ -801,6 +801,26 @@ const TicketCard = ({
   const isOverdue = ticket.expectedCompletionAt && !isFinalStatus
     ? new Date(ticket.expectedCompletionAt).getTime() < Date.now()
     : false;
+  const parseCsvValues = (value) => {
+    if (!value) return [];
+    return String(value).split(',').map((item) => item.trim()).filter(Boolean);
+  };
+  const additionalTechnicianIds = parseCsvValues(ticket.additionalTechnicianIds);
+  const additionalTechnicianNames = parseCsvValues(ticket.additionalTechnicianNames);
+  const assignedIds = new Set([
+    ...(ticket.assignedTechnicianId ? [String(ticket.assignedTechnicianId)] : []),
+    ...additionalTechnicianIds,
+  ]);
+  const availableTechnicians = technicians.filter((tech) => !assignedIds.has(String(tech.id)));
+  const deadlineMin = new Date();
+  const deadlineMax = new Date();
+  deadlineMax.setMonth(deadlineMax.getMonth() + 1);
+  const toDateTimeLocalValue = (dateValue) => {
+    const dt = new Date(dateValue);
+    if (Number.isNaN(dt.getTime())) return '';
+    const pad = (num) => String(num).padStart(2, '0');
+    return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+  };
 
   return (
     <div className="border rounded-lg bg-white shadow-sm hover:shadow-md transition">
@@ -837,8 +857,10 @@ const TicketCard = ({
             }`}>
               {ticket.priority}
             </span>
-            {ticket.assignedTechnicianName && (
-              <span>Assigned: {ticket.assignedTechnicianName}</span>
+            {(ticket.assignedTechnicianName || additionalTechnicianNames.length > 0) && (
+              <span>
+                Assigned: {[ticket.assignedTechnicianName, ...additionalTechnicianNames].filter(Boolean).join(', ')}
+              </span>
             )}
           </div>
         </div>
@@ -875,11 +897,11 @@ const TicketCard = ({
             </div>
           )}
 
-          {!ticket.assignedTechnicianId && (
+          {!isFinalStatus && (
             <div className="flex items-end gap-2">
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Assign Technician
+                  {ticket.assignedTechnicianId ? 'Add Another Technician' : 'Assign Technician'}
                 </label>
                 <select
                   value={selectedTech}
@@ -887,19 +909,26 @@ const TicketCard = ({
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Select technician...</option>
-                  {technicians.map((tech) => (
+                  {availableTechnicians.map((tech) => (
                     <option key={tech.id} value={tech.id}>
-                      {tech.displayName || tech.username}
+                      {tech.displayName || tech.name || tech.email}
                     </option>
                   ))}
                 </select>
               </div>
               <button
                 onClick={onAssign}
+                disabled={!selectedTech || availableTechnicians.length === 0}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
               >
-                Assign
+                {ticket.assignedTechnicianId ? 'Add Technician' : 'Assign'}
               </button>
+            </div>
+          )}
+
+          {isFinalStatus && (
+            <div className="p-3 rounded border bg-gray-100 text-sm text-gray-600">
+              This ticket is {ticket.status}. Assignment and edits are locked.
             </div>
           )}
 
@@ -963,7 +992,10 @@ const TicketCard = ({
                 type="datetime-local"
                 value={deadlineValue}
                 onChange={(e) => onDeadlineChange(e.target.value)}
+                min={toDateTimeLocalValue(deadlineMin)}
+                max={toDateTimeLocalValue(deadlineMax)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                disabled={isFinalStatus}
               />
             </div>
             <div>
@@ -976,6 +1008,7 @@ const TicketCard = ({
                 onChange={(e) => onWarningChange(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Warning message for deadline..."
+                disabled={isFinalStatus}
               />
             </div>
           </div>
@@ -992,6 +1025,7 @@ const TicketCard = ({
             <button
               onClick={onSaveDeadline}
               className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-medium"
+              disabled={isFinalStatus}
             >
               Save Deadline
             </button>
