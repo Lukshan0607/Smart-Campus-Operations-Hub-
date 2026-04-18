@@ -16,6 +16,10 @@ import AdminUserManagement from './pages/dashboard/AdminUserManagement';
 import CategoryPriorityDetailsPage from './pages/dashboard/CategoryPriorityDetailsPage';
 import AdminBottomDetailsPage from './pages/dashboard/AdminBottomDetailsPage';
 import AssignTechniciansPage from './pages/dashboard/AssignTechniciansPage';
+import ResourcesPage from './pages/ResourcesPage';
+import ResourceDetailPage from './pages/ResourceDetailPage';
+import BookResourcePage from './pages/BookResourcePage';
+import MainLayout from './layouts/MainLayout';
 
 function App() {
   return (
@@ -130,8 +134,24 @@ function App() {
       />
 
       <Route path="*" element={<Navigate to="/" replace />} />
+
+      <BrowserRouter>
+      <Routes>
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/resources" element={<ResourcesPage />} />
+          <Route path="/resources/:id" element={<ResourceDetailPage />} />
+          <Route path="/resources/:id/book" element={<BookResourcePage />} />
+          <Route path="/admin" element={<AdminDashboard />} />
+        </Route>
+        <Route path="/login" element={<Login />} />
+      </Routes>
+    </BrowserRouter>
+  
     </Routes>
-  );
+
+      )
+
 }
 
-export default App;
+
