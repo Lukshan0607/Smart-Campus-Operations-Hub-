@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { useTickets } from '../../hooks/useTickets';
 import { getUser } from '../../utils/auth';
 
-const AttachmentUpload = ({ ticketId, attachments = [], onChange }) => {
+const AttachmentUpload = ({ ticketId, attachments = [], onChange, technicianAssigned = false }) => {
   const { uploadAttachments, deleteAttachment, loading, error } = useTickets();
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploadError, setUploadError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
   const currentUser = getUser();
+
+  // Can only upload/delete attachments if NO technician is assigned
+  const canManageAttachments = !technicianAssigned;
 
   const canDeleteAttachment = (attachment) => {
     if (!attachment) return false;
@@ -67,22 +70,36 @@ const AttachmentUpload = ({ ticketId, attachments = [], onChange }) => {
 
   return (
     <div className="mt-8 pb-6 border-b">
-      <h2 className="text-lg font-bold text-gray-900 mb-4">Attachments</h2>
-
-      {/* File Upload */}
-      <div className="mb-6 p-4 border-2 border-dashed border-gray-300 rounded-lg">
-        <input
-          type="file"
-          multiple
-          accept="image/jpeg,image/png,image/webp"
-          onChange={handleFileSelect}
-          disabled={loading || attachments.length >= 3}
-          className="w-full"
-        />
-        <p className="text-sm text-gray-500 mt-2">
-          Max 3 files, 5MB each. Allowed: JPEG, PNG, WebP
-        </p>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-bold text-gray-900">Attachments</h2>
+        {technicianAssigned && (
+          <span className="text-xs bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full font-semibold">
+            Technician Assigned - Upload Locked
+          </span>
+        )}
+        {!technicianAssigned && (
+          <span className="text-xs bg-green-100 text-green-800 px-3 py-1 rounded-full font-semibold">
+            Unassigned - You Can Edit Images
+          </span>
+        )}
       </div>
+
+      {/* File Upload - Only if NO technician assigned */}
+      {canManageAttachments && (
+        <div className="mb-6 p-4 border-2 border-dashed border-gray-300 rounded-lg">
+          <input
+            type="file"
+            multiple
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleFileSelect}
+            disabled={loading || attachments.length >= 3}
+            className="w-full"
+          />
+          <p className="text-sm text-gray-500 mt-2">
+            Max 3 files, 5MB each. Allowed: JPEG, PNG, WebP
+          </p>
+        </div>
+      )}
 
       {(uploadError || error) && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-red-800">
@@ -90,7 +107,7 @@ const AttachmentUpload = ({ ticketId, attachments = [], onChange }) => {
         </div>
       )}
 
-      {selectedFiles.length > 0 && (
+      {selectedFiles.length > 0 && canManageAttachments && (
         <div className="mb-6">
           <h3 className="font-semibold text-gray-900 mb-2">Selected Files ({selectedFiles.length})</h3>
           <ul className="space-y-2 mb-4">
@@ -122,7 +139,7 @@ const AttachmentUpload = ({ ticketId, attachments = [], onChange }) => {
                   <p className="text-xs text-gray-500 mt-1">{attachment.uploadedByName}</p>
                   <p className="text-xs text-gray-400">{new Date(attachment.uploadedAt).toLocaleDateString()}</p>
                 </a>
-                {canDeleteAttachment(attachment) && (
+                {canDeleteAttachment(attachment) && canManageAttachments && (
                   <button
                     type="button"
                     onClick={() => handleDelete(attachment.id)}

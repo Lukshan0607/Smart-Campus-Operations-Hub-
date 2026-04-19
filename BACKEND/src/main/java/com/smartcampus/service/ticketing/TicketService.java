@@ -531,8 +531,9 @@ public class TicketService {
             Ticket ticket = ticketRepository.findById(ticketId)
                     .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
 
-            // Cascade delete will handle attachments and comments
-            ticketRepository.deleteById(ticketId);
+            // Delete ticket - cascade will delete related comments and attachments from DB
+            // File cleanup is handled separately in AttachmentService if needed
+            ticketRepository.delete(ticket);
         } catch (TicketNotFoundException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
         } catch (Exception e) {

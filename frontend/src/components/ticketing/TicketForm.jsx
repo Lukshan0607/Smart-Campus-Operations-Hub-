@@ -89,6 +89,18 @@ const TicketForm = ({ onSubmit, loading = false, initialData = null, submitLabel
       }
       if (!formData.roomNumber.trim()) {
         newErrors.roomNumber = 'Room number is required';
+      } else {
+        const room = Number(formData.roomNumber);
+        if (!Number.isInteger(room) || room < 101 || room > 115) {
+          newErrors.roomNumber = 'Room number must be 101 to 115';
+        }
+      }
+    }
+    // Validate contact phone: must be 10 digits and start with 0
+    if (formData.contactPhone && formData.contactPhone.trim()) {
+      const phoneDigits = formData.contactPhone.replace(/\D/g, '');
+      if (phoneDigits.length !== 10 || !phoneDigits.startsWith('0')) {
+        newErrors.contactPhone = 'Contact phone must be 10 digits and start with 0';
       }
     }
     setErrors(newErrors);
@@ -239,15 +251,17 @@ const TicketForm = ({ onSubmit, loading = false, initialData = null, submitLabel
         <div>
           <label className="block text-sm font-semibold text-gray-900 mb-2">Room Number</label>
           <input
-            type="text"
+            type="number"
             name="roomNumber"
             value={formData.roomNumber}
             onChange={handleChange}
+            min="101"
+            max="115"
             disabled={formData.locationCategory === 'OTHER'}
             className={`w-full border rounded-lg px-3 py-2 ${
               errors.roomNumber ? 'border-red-500' : 'border-gray-300'
             } ${formData.locationCategory === 'OTHER' ? 'bg-gray-100 text-gray-400' : ''}`}
-            placeholder="Room number"
+            placeholder="101 to 115"
           />
           {errors.roomNumber && <p className="text-red-600 text-sm mt-1">{errors.roomNumber}</p>}
         </div>
@@ -294,9 +308,12 @@ const TicketForm = ({ onSubmit, loading = false, initialData = null, submitLabel
           name="contactPhone"
           value={formData.contactPhone}
           onChange={handleChange}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2"
-          placeholder="+1 (555) 000-0000"
+          className={`w-full border rounded-lg px-3 py-2 ${
+            errors.contactPhone ? 'border-red-500' : 'border-gray-300'
+          }`}
+          placeholder="0XXXXXXXXXX (10 digits starting with 0)"
         />
+        {errors.contactPhone && <p className="text-red-600 text-sm mt-1">{errors.contactPhone}</p>}
       </div>
 
       <button

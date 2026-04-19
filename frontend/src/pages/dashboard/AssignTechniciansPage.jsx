@@ -144,8 +144,7 @@ const AssignTechniciansPage = () => {
   };
 
   const filteredTickets = tickets
-    .filter((ticket) => ticket.status === filterStatus)
-    .filter((ticket) => isUpcomingWithinMonth(ticket));
+    .filter((ticket) => ticket.status === filterStatus);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -162,7 +161,7 @@ const AssignTechniciansPage = () => {
               &larr; Back to Admin Dashboard
             </button>
             <h1 className="text-3xl font-bold">Assign Technicians</h1>
-            <p className="text-blue-100 mt-2">Upcoming tickets (next 1 month) with technician assignment and locked final states</p>
+            <p className="text-blue-100 mt-2">Manage technician assignments across all ticket statuses</p>
           </div>
         </div>
 
@@ -207,7 +206,7 @@ const AssignTechniciansPage = () => {
           </div>
         ) : filteredTickets.length === 0 ? (
           <div className="bg-white rounded-lg border p-8 text-center">
-            <p className="text-gray-600 text-lg">No upcoming tickets with status "{filterStatus}" found for the next month</p>
+            <p className="text-gray-600 text-lg">No tickets with status "{filterStatus.replace(/_/g, ' ')}" found</p>
           </div>
         ) : (
           <div className="space-y-4">

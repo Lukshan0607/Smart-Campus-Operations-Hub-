@@ -9,7 +9,7 @@ const TicketsPage = () => {
   const { tickets, loading, error, fetchTickets } = useTickets();
 
   useEffect(() => {
-    fetchTickets();
+    fetchTickets(true);
   }, [fetchTickets]);
 
   return (
@@ -22,10 +22,10 @@ const TicketsPage = () => {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                Maintenance Tickets
+                My Tickets
               </h1>
               <p className="text-gray-600 mt-2 text-sm sm:text-base">
-                View and manage campus maintenance requests efficiently
+                Your submitted maintenance requests
               </p>
             </div>
             <Link
