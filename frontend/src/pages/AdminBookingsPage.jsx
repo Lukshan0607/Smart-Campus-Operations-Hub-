@@ -20,9 +20,7 @@ function AdminBookingsPage() {
     try {
       setLoading(true);
       setMessage("");
-      // Fetch all bookings with pagination to get complete data
       const response = await api.get("/api/admin/bookings?page=0&size=1000");
-      console.log("API Response:", response.data);
       setBookings(response.data?.content || []);
     } catch (error) {
       console.error("Failed to load admin bookings", error);
@@ -34,12 +32,11 @@ function AdminBookingsPage() {
 
   useEffect(() => {
     fetchBookings();
-    
-    // Set up auto-refresh to check for new bookings every 10 seconds
+
     const interval = setInterval(() => {
       fetchBookings();
-    }, 10000); // Refresh every 10 seconds
-    
+    }, 10000);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -178,6 +175,39 @@ function AdminBookingsPage() {
     };
   }, [bookings]);
 
+  const analytics = useMemo(() => {
+    const resourceMap = {};
+    const hourMap = {};
+
+    bookings.forEach((booking) => {
+      const resourceName = booking.resourceName || "Unknown Resource";
+      resourceMap[resourceName] = (resourceMap[resourceName] || 0) + 1;
+
+      if (booking.startTime) {
+        const hour = new Date(booking.startTime).getHours();
+        const label = `${String(hour).padStart(2, "0")}:00`;
+        hourMap[label] = (hourMap[label] || 0) + 1;
+      }
+    });
+
+    const topResources = Object.entries(resourceMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    const peakHours = Object.entries(hourMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+
+    return {
+      topResources,
+      peakHours,
+      mostRequestedResource: topResources[0]?.[0] || "N/A",
+      mostRequestedCount: topResources[0]?.[1] || 0,
+      peakBookingHour: peakHours[0]?.[0] || "N/A",
+      peakBookingHourCount: peakHours[0]?.[1] || 0,
+    };
+  }, [bookings]);
+
   const filteredBookings = useMemo(() => {
     return bookings.filter((booking) => {
       const matchesFilter =
@@ -207,6 +237,10 @@ function AdminBookingsPage() {
               <div key={item} className="h-24 bg-white rounded-2xl shadow-sm"></div>
             ))}
           </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="h-52 bg-white rounded-2xl shadow-sm"></div>
+            <div className="h-52 bg-white rounded-2xl shadow-sm"></div>
+          </div>
           <div className="h-16 bg-white rounded-2xl shadow-sm"></div>
           <div className="space-y-4">
             {[1, 2, 3].map((item) => (
@@ -221,15 +255,14 @@ function AdminBookingsPage() {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <AdminSideNavigation activeSection="bookings" setActiveSection={() => {}} />
-      
+
       <div className="flex-1 p-6 text-black">
         <div className="max-w-7xl mx-auto">
-          {/* Header */}
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Admin Bookings</h1>
               <p className="text-gray-500 mt-1">
-                Review, approve, reject, and complete booking requests
+                Review, approve, reject, complete, and analyze booking requests
               </p>
             </div>
 
@@ -241,14 +274,12 @@ function AdminBookingsPage() {
             </button>
           </div>
 
-          {/* Message */}
           {message && (
             <div className="mb-6 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 shadow-sm">
               {message}
             </div>
           )}
 
-          {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-4 mb-8">
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
               <p className="text-sm text-gray-500">Total</p>
@@ -281,7 +312,87 @@ function AdminBookingsPage() {
             </div>
           </div>
 
-          {/* Search + Filter */}
+          {/* Innovation: Booking Analytics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+              <p className="text-sm text-gray-500">Most Requested Resource</p>
+              <h3 className="text-xl font-bold text-gray-900 mt-2">
+                {analytics.mostRequestedResource}
+              </h3>
+              <p className="text-sm text-blue-600 mt-1">
+                {analytics.mostRequestedCount} booking(s)
+              </p>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+              <p className="text-sm text-gray-500">Peak Booking Hour</p>
+              <h3 className="text-xl font-bold text-gray-900 mt-2">
+                {analytics.peakBookingHour}
+              </h3>
+              <p className="text-sm text-green-600 mt-1">
+                {analytics.peakBookingHourCount} booking(s)
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Top Booked Resources
+              </h3>
+
+              {analytics.topResources.length === 0 ? (
+                <p className="text-sm text-gray-500">No booking data available.</p>
+              ) : (
+                <div className="space-y-3">
+                  {analytics.topResources.map(([name, count], index) => (
+                    <div
+                      key={name}
+                      className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3"
+                    >
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          #{index + 1} {name}
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold text-blue-600">
+                        {count} bookings
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                Peak Booking Hours
+              </h3>
+
+              {analytics.peakHours.length === 0 ? (
+                <p className="text-sm text-gray-500">No booking data available.</p>
+              ) : (
+                <div className="space-y-3">
+                  {analytics.peakHours.map(([hour, count], index) => (
+                    <div
+                      key={hour}
+                      className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3"
+                    >
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          #{index + 1} {hour}
+                        </p>
+                      </div>
+                      <span className="text-sm font-semibold text-green-600">
+                        {count} bookings
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
             <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
               <div className="w-full lg:max-w-md">
@@ -314,7 +425,6 @@ function AdminBookingsPage() {
             </div>
           </div>
 
-          {/* Booking cards */}
           {filteredBookings.length === 0 ? (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
               <h3 className="text-xl font-semibold text-gray-800">No bookings found</h3>
@@ -387,7 +497,6 @@ function AdminBookingsPage() {
                         </div>
                       </div>
 
-                      {/* Details */}
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">
                           Booking Details
@@ -484,7 +593,6 @@ function AdminBookingsPage() {
             </div>
           )}
 
-          {/* Reject Modal */}
           {rejectModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
               <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
@@ -498,8 +606,7 @@ function AdminBookingsPage() {
                 <div className="px-6 py-5">
                   <div className="mb-4 rounded-xl bg-gray-50 p-4 text-sm text-gray-700">
                     <p>
-                      <span className="font-semibold">Booking ID:</span>{" "}
-                      #{selectedBooking?.id}
+                      <span className="font-semibold">Booking ID:</span> #{selectedBooking?.id}
                     </p>
                     <p className="mt-1">
                       <span className="font-semibold">Resource:</span>{" "}
