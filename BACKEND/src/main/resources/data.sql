@@ -1,3 +1,22 @@
+INSERT IGNORE INTO users (
+    id, user_id, name, email, phone, password, picture, role, status, provider
+) VALUES
+(1, 'ADM0001', 'Admin User', 'admin@smartcampus.com', '0770000001', '$2a$10$ImKlDmIjDdci.SO4VQgRzuAwThBxsTKYa6359b50orP.8fi/9kMJm', NULL, 'ADMIN', 'Active', 'LOCAL'),
+(2, 'TEC0001', 'Technician One', 'technician@smartcampus.com', '0770000002', '$2a$10$Er/YQha2vazNW83TDPvixOIc8yRNtuQUD8k1wBT9mVYORjdFmDCO6', NULL, 'TECHNICIAN', 'Active', 'LOCAL'),
+(3, 'TEC0002', 'Technician 2', 'technician2@smartcampus.com', '0770000002', '$2a$10$Er/YQha2vazNW83TDPvixOIc8yRNtuQUD8k1wBT9mVYORjdFmDCO6', NULL, 'TECHNICIAN', 'Active', 'LOCAL'),
+(4, 'TEC0003', 'Technician 3', 'technician3@smartcampus.com', '0770000003', '$2a$10$Er/YQha2vazNW83TDPvixOIc8yRNtuQUD8k1wBT9mVYORjdFmDCO6', NULL, 'TECHNICIAN', 'Active', 'LOCAL'),
+(5, 'TEC0004', 'Technician 4', 'technician4@smartcampus.com', '0770000004', '$2a$10$Er/YQha2vazNW83TDPvixOIc8yRNtuQUD8k1wBT9mVYORjdFmDCO6', NULL, 'TECHNICIAN', 'Active', 'LOCAL'),
+(6, 'TEC0005', 'Technician 5', 'technician5@smartcampus.com', '0770000005', '$2a$10$Er/YQha2vazNW83TDPvixOIc8yRNtuQUD8k1wBT9mVYORjdFmDCO6', NULL, 'TECHNICIAN', 'Active', 'LOCAL'),
+(7, 'TEC0006', 'Technician 6', 'technician6@smartcampus.com', '0770000006', '$2a$10$Er/YQha2vazNW83TDPvixOIc8yRNtuQUD8k1wBT9mVYORjdFmDCO6', NULL, 'TECHNICIAN', 'Active', 'LOCAL'),
+(8, 'TEC0007', 'Technician 7', 'technician7@smartcampus.com', '0770000007', '$2a$10$Er/YQha2vazNW83TDPvixOIc8yRNtuQUD8k1wBT9mVYORjdFmDCO6', NULL, 'TECHNICIAN', 'Active', 'LOCAL'),
+(9, 'TEC0008', 'Technician 8', 'technician8@smartcampus.com', '0770000008', '$2a$10$Er/YQha2vazNW83TDPvixOIc8yRNtuQUD8k1wBT9mVYORjdFmDCO6', NULL, 'TECHNICIAN', 'Active', 'LOCAL'),
+(10, 'TEC0009', 'Technician 9', 'technician9@smartcampus.com', '0770000009', '$2a$10$Er/YQha2vazNW83TDPvixOIc8yRNtuQUD8k1wBT9mVYORjdFmDCO6', NULL, 'TECHNICIAN', 'Active', 'LOCAL'),
+(11, 'TEC0010', 'Technician 10', 'technician10@smartcampus.com', '0770000010', '$2a$10$Er/YQha2vazNW83TDPvixOIc8yRNtuQUD8k1wBT9mVYORjdFmDCO6', NULL, 'TECHNICIAN', 'Active', 'LOCAL'),
+(12, 'TEC0011', 'Technician 11', 'technician11@smartcampus.com', '0770000011', '$2a$10$Er/YQha2vazNW83TDPvixOIc8yRNtuQUD8k1wBT9mVYORjdFmDCO6', NULL, 'TECHNICIAN', 'Active', 'LOCAL'),
+(13, 'TEC0012', 'Technician 12', 'technician12@smartcampus.com', '0770000012', '$2a$10$Er/YQha2vazNW83TDPvixOIc8yRNtuQUD8k1wBT9mVYORjdFmDCO6', NULL, 'TECHNICIAN', 'Active', 'LOCAL'),
+(14, 'STU0001', 'Student User', 'student@smartcampus.com', '0770000003', '$2a$10$UWnV3oLFx.9MD/IN.ey.rO078su0wfCv5iu/igmibMiUxejMpXgfa', NULL, 'USER', 'Active', 'LOCAL'),
+(15, 'LEC0001', 'Lecturer User', 'lecturer@smartcampus.com', '0770000004', '$2a$10$pwDboPJ/x57QXKQNFFRdQu760Yy3bYeqCOsN.qCXY6B4/vAZRVmmS', NULL, 'USER', 'Active', 'LOCAL');
+
 INSERT IGNORE INTO tickets (
     title, description, category, sub_category, priority, location_category, building_name,
     floor_number, block, room_number, other_location, status, location, contact_phone,
