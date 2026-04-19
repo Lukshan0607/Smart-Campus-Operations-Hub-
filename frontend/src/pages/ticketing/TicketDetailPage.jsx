@@ -33,14 +33,16 @@ const TicketDetailPage = () => {
     if (!selectedTicket || !currentUser) return false;
     const isAdmin = currentUser.role === 'ADMIN';
     const isOwner = currentUserId != null && String(selectedTicket.creatorId) === String(currentUserId);
-    return isAdmin || isOwner;
+    const isAssigned = !!selectedTicket.assignedTechnicianId;
+    return isAdmin || (isOwner && isAssigned);
   }, [selectedTicket, currentUser, currentUserId]);
 
   const canEditData = useMemo(() => {
     if (!selectedTicket || !currentUser) return false;
     const isAdmin = currentUser.role === 'ADMIN';
     const isOwner = currentUserId != null && String(selectedTicket.creatorId) === String(currentUserId);
-    return isAdmin || isOwner;
+    const isAssigned = !!selectedTicket.assignedTechnicianId;
+    return isAdmin || (isOwner && !isAssigned);
   }, [selectedTicket, currentUser, currentUserId]);
 
   const handleStatusUpdate = async (ticketId, status, resolutionNote) => {

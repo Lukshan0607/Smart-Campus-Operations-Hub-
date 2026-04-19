@@ -1,42 +1,64 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTickets } from '../../hooks/useTickets';
 import TicketList from '../../components/ticketing/TicketList';
 import Header from '../../components/Header';
 import Footer from '../../components/Footer';
+import UserSideNavigation from '../../components/UserSideNavigation';
+import { getUser } from '../../utils/auth';
 
 const TicketsPage = () => {
-  const { tickets, loading, error, fetchTickets } = useTickets();
+  const { tickets, loading, error, fetchTickets, fetchTechnicianJobs } = useTickets();
+  const [activeSection, setActiveSection] = useState('my-tickets');
+  const user = getUser();
+  const isTechnician = user?.role === 'TECHNICIAN';
 
   useEffect(() => {
-    fetchTickets(true);
-  }, [fetchTickets]);
+    if (isTechnician) {
+      fetchTechnicianJobs();
+      setActiveSection('my-jobs');
+    } else {
+      fetchTickets(true);
+      setActiveSection('my-tickets');
+    }
+  }, [fetchTickets, fetchTechnicianJobs, isTechnician]);
+
+  const pageTitle = useMemo(() => (isTechnician ? 'My Jobs' : 'My Tickets'), [isTechnician]);
+  const pageSubtitle = useMemo(
+    () => (isTechnician ? 'Your assigned technician jobs' : 'Your submitted maintenance requests'),
+    [isTechnician]
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex flex-col">
       <Header />
-      
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+      <div className="flex flex-1">
+        <UserSideNavigation activeSection={activeSection} setActiveSection={setActiveSection} />
+
+        <main className="flex-1 container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-8 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                My Tickets
+                {pageTitle}
               </h1>
               <p className="text-gray-600 mt-2 text-sm sm:text-base">
-                Your submitted maintenance requests
+                {pageSubtitle}
               </p>
             </div>
-            <Link
-              to="/tickets/create"
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              New Ticket
-            </Link>
+            {!isTechnician && (
+              <Link
+                to="/tickets/create"
+                className="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105 shadow-lg"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                New Ticket
+              </Link>
+            )}
           </div>
         </div>
 
@@ -54,7 +76,8 @@ const TicketsPage = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-100">
           <TicketList tickets={tickets} loading={loading} error={error} />
         </div>
-      </main>
+        </main>
+      </div>
       
       <Footer />
     </div>
