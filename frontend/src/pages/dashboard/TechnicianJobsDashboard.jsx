@@ -1,5 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import ticketApi from '../../api/ticketApi';
+import Header from '../../components/Header';
+import Footer from '../../components/Footer';
+import UserSideNavigation from '../../components/UserSideNavigation';
+import { getUser } from '../../utils/auth';
 
 const TechnicianJobsDashboard = () => {
   const [jobs, setJobs] = React.useState([]);
@@ -8,6 +12,8 @@ const TechnicianJobsDashboard = () => {
   const [completionNotes, setCompletionNotes] = React.useState({});
   const [proofFiles, setProofFiles] = React.useState({});
   const [submitting, setSubmitting] = React.useState({});
+  const [activeSection, setActiveSection] = React.useState('dashboard');
+  const currentUser = getUser();
 
   const load = async () => {
     setLoading(true);
@@ -33,6 +39,24 @@ const TechnicianJobsDashboard = () => {
   };
 
   const isFinalStatus = (status) => ['RESOLVED', 'CLOSED', 'REJECTED'].includes(status);
+
+  const ownJobs = useMemo(() => (Array.isArray(jobs) ? jobs : []), [jobs]);
+
+  const workflow = useMemo(() => {
+    const open = ownJobs.filter((t) => t.status === 'OPEN').length;
+    const inProgress = ownJobs.filter((t) => t.status === 'IN_PROGRESS').length;
+    const completed = ownJobs.filter((t) => isFinalStatus(t.status)).length;
+    const total = ownJobs.length;
+    const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return {
+      open,
+      inProgress,
+      completed,
+      total,
+      completionRate,
+    };
+  }, [ownJobs]);
 
   const isOverdue = (ticket) => {
     if (!ticket.expectedCompletionAt || isFinalStatus(ticket.status)) return false;
@@ -69,13 +93,52 @@ const TechnicianJobsDashboard = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">My Assigned Jobs</h1>
-      {loading && <p>Loading...</p>}
-      {error && <p className="text-red-600">{error}</p>}
-      <div className="grid gap-3">
-        {jobs.map((t) => (
-          <div key={t.id} className="border rounded p-4">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Header />
+
+      <div className="flex flex-1">
+        <UserSideNavigation activeSection={activeSection} setActiveSection={setActiveSection} />
+
+        <main className="flex-1 p-6">
+          <div className="max-w-6xl mx-auto">
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold text-gray-900">Technician Dashboard</h1>
+              <p className="text-gray-600 mt-1">
+                Welcome {currentUser?.name || currentUser?.username || 'Technician'} - view your own jobs and update workflow when tasks are completed.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                <p className="text-sm text-gray-500">Total Jobs</p>
+                <p className="text-2xl font-bold text-gray-900">{workflow.total}</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                <p className="text-sm text-gray-500">Open</p>
+                <p className="text-2xl font-bold text-blue-700">{workflow.open}</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                <p className="text-sm text-gray-500">In Progress</p>
+                <p className="text-2xl font-bold text-amber-600">{workflow.inProgress}</p>
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                <p className="text-sm text-gray-500">Completed</p>
+                <p className="text-2xl font-bold text-green-700">{workflow.completed} ({workflow.completionRate}%)</p>
+              </div>
+            </div>
+
+            {loading && <p>Loading your jobs...</p>}
+            {error && <p className="text-red-600 mb-4">{error}</p>}
+
+            {!loading && ownJobs.length === 0 && (
+              <div className="bg-white border border-dashed border-gray-300 rounded-xl p-8 text-center text-gray-500">
+                No jobs assigned to you yet.
+              </div>
+            )}
+
+            <div className="grid gap-3">
+              {ownJobs.map((t) => (
+                <div key={t.id} className="border rounded p-4 bg-white">
             <div className="flex justify-between items-center">
               <h3 className="font-semibold">{t.title}</h3>
               <span className={`text-xs font-bold px-2 py-1 rounded ${
@@ -172,13 +235,18 @@ const TechnicianJobsDashboard = () => {
                   disabled={submitting[t.id]}
                   className="px-3 py-1.5 rounded bg-green-600 text-white disabled:bg-gray-300"
                 >
-                  {submitting[t.id] ? 'Submitting...' : 'Mark Complete + Upload Proof'}
+                  {submitting[t.id] ? 'Submitting...' : 'Completed Task'}
                 </button>
               </div>
             )}
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
+        </main>
       </div>
+
+      <Footer />
     </div>
   );
 };

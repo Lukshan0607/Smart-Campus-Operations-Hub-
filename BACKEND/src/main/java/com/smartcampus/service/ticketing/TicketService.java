@@ -2,9 +2,12 @@ package com.smartcampus.service.ticketing;
 
 import com.smartcampus.dto.ticketing.TicketRequestDTO;
 import com.smartcampus.dto.ticketing.TicketResponseDTO;
+import com.smartcampus.entity.Role;
 import com.smartcampus.entity.ticketing.Ticket;
 import com.smartcampus.entity.TicketStatus;
+import com.smartcampus.entity.User;
 import com.smartcampus.exception.ticketing.TicketNotFoundException;
+import com.smartcampus.repository.UserRepository;
 import com.smartcampus.repository.ticketing.TicketRepository;
 import com.smartcampus.service.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +21,10 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,6 +32,7 @@ import java.util.stream.Collectors;
 public class TicketService {
 
     private final TicketRepository ticketRepository;
+    private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final AttachmentService attachmentService;
 
@@ -56,6 +63,10 @@ public class TicketService {
     public TicketResponseDTO updateTicket(Long id, TicketRequestDTO request, String username) {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + id));
+
+        if (isFinalStatus(ticket.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Final-state tickets cannot be edited");
+        }
 
         Long currentUserId = extractUserIdFromContext();
         boolean isAdmin = hasRole("ADMIN");
@@ -114,7 +125,10 @@ public class TicketService {
 
     public List<TicketResponseDTO> listTechnicianJobs() {
         Long userId = extractUserIdFromContext();
-        return ticketRepository.findByAssignedTechnicianId(userId).stream().map(this::mapToDTO).collect(Collectors.toList());
+        return ticketRepository.findAll().stream()
+                .filter(ticket -> isAssignedToTechnician(ticket, userId))
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
     }
 
     public List<TicketResponseDTO> listAdminTickets(TicketStatus status, String priority, String category) {
@@ -129,6 +143,10 @@ public class TicketService {
     public TicketResponseDTO updateStatus(Long id, TicketStatus newStatus, String resolutionNote, String username) {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + id));
+
+        if (isFinalStatus(ticket.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Final-state tickets cannot be updated");
+        }
 
         boolean isAdmin = hasRole("ADMIN");
         boolean isTechnician = hasRole("TECHNICIAN");
@@ -154,13 +172,39 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + id));
 
-        ticket.setAssignedTechnicianId(technicianId);
-        ticket.setAssignedTechnicianName("technician-" + technicianId);
+        if (isFinalStatus(ticket.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot assign technicians to final-state tickets");
+        }
+
+        User technician = userRepository.findById(technicianId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Technician not found"));
+        if (technician.getRole() != Role.TECHNICIAN) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selected user is not a technician");
+        }
+
+        String displayName = technician.getName() != null && !technician.getName().isBlank()
+                ? technician.getName()
+                : technician.getEmail();
+
+        if (ticket.getAssignedTechnicianId() == null) {
+            ticket.setAssignedTechnicianId(technicianId);
+            ticket.setAssignedTechnicianName(displayName);
+        } else if (!ticket.getAssignedTechnicianId().equals(technicianId)) {
+            Set<String> existingIds = csvToSet(ticket.getAdditionalTechnicianIds());
+            Set<String> existingNames = csvToSet(ticket.getAdditionalTechnicianNames());
+
+            existingIds.add(String.valueOf(technicianId));
+            existingNames.add(displayName);
+
+            ticket.setAdditionalTechnicianIds(String.join(",", existingIds));
+            ticket.setAdditionalTechnicianNames(String.join(",", existingNames));
+        }
+
         ticket.setStatus(TicketStatus.IN_PROGRESS);
 
         Ticket updated = ticketRepository.save(ticket);
 
-        notificationService.create(technicianId, "technician-" + technicianId,
+        notificationService.create(technicianId, displayName,
                 "New assigned ticket", "Ticket #" + ticket.getId() + " assigned to you.");
         notificationService.create(ticket.getCreatorId(), ticket.getCreatorName(),
                 "Technician assigned", "A technician was assigned to ticket #" + ticket.getId() + ".");
@@ -171,6 +215,10 @@ public class TicketService {
     public TicketResponseDTO completeTicket(Long id, String resolutionNote, String username) {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + id));
+
+        if (isFinalStatus(ticket.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Final-state tickets cannot be edited");
+        }
 
         Long userId = extractUserIdFromContext();
         if (ticket.getAssignedTechnicianId() != null && !ticket.getAssignedTechnicianId().equals(userId)) {
@@ -195,6 +243,10 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + id));
 
+        if (isFinalStatus(ticket.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Final-state tickets cannot be edited");
+        }
+
         if (status == TicketStatus.REJECTED && (reason == null || reason.isBlank())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Reason is required when rejecting a ticket");
         }
@@ -217,8 +269,15 @@ public class TicketService {
         Ticket ticket = ticketRepository.findById(id)
                 .orElseThrow(() -> new TicketNotFoundException("Ticket not found with id: " + id));
 
+        if (isFinalStatus(ticket.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot set deadline for final-state tickets");
+        }
+
         if (expectedCompletionAt != null && expectedCompletionAt.isBefore(LocalDateTime.now().minusMinutes(1))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Expected completion time must be in the future");
+        }
+        if (expectedCompletionAt != null && expectedCompletionAt.isAfter(LocalDateTime.now().plusMonths(1))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Expected completion time must be within the upcoming month");
         }
 
         ticket.setExpectedCompletionAt(expectedCompletionAt);
@@ -259,6 +318,8 @@ public class TicketService {
         dto.setCreatorName(ticket.getCreatorName());
         dto.setAssignedTechnicianId(ticket.getAssignedTechnicianId());
         dto.setAssignedTechnicianName(ticket.getAssignedTechnicianName());
+        dto.setAdditionalTechnicianIds(ticket.getAdditionalTechnicianIds());
+        dto.setAdditionalTechnicianNames(ticket.getAdditionalTechnicianNames());
         dto.setResolutionNote(ticket.getResolutionNote());
         dto.setCompletionNotes(ticket.getCompletionNotes());
         dto.setRejectionReason(ticket.getRejectionReason());
@@ -379,5 +440,123 @@ public class TicketService {
             case "OTHER" -> "Other";
             default -> category;
         };
+    }
+
+    private boolean isFinalStatus(TicketStatus status) {
+        return status == TicketStatus.RESOLVED || status == TicketStatus.CLOSED || status == TicketStatus.REJECTED;
+    }
+
+    private boolean isAssignedToTechnician(Ticket ticket, Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        if (ticket.getAssignedTechnicianId() != null && ticket.getAssignedTechnicianId().equals(userId)) {
+            return true;
+        }
+        Set<String> additionalIds = csvToSet(ticket.getAdditionalTechnicianIds());
+        return additionalIds.contains(String.valueOf(userId));
+    }
+
+    private Set<String> csvToSet(String csv) {
+        if (csv == null || csv.isBlank()) {
+            return new LinkedHashSet<>();
+        }
+        return Arrays.stream(csv.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isBlank())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    public TicketResponseDTO removeTechnician(Long ticketId, Long technicianId, String username) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
+
+        if (isFinalStatus(ticket.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+                "Cannot remove technician from a ticket in final status");
+        }
+
+        // Check if at least one technician will remain
+        boolean isPrimary = ticket.getAssignedTechnicianId() != null && 
+                           ticket.getAssignedTechnicianId().equals(technicianId);
+        Set<String> additionalIds = csvToSet(ticket.getAdditionalTechnicianIds());
+        
+        if (isPrimary && additionalIds.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+                "Cannot remove the only technician. At least one technician must be assigned.");
+        }
+
+        if (isPrimary) {
+            // Move first additional to primary
+            if (!additionalIds.isEmpty()) {
+                String firstAdditional = additionalIds.iterator().next();
+                additionalIds.remove(firstAdditional);
+                
+                Long newPrimaryId = Long.parseLong(firstAdditional.split(",")[0].trim());
+                User newPrimary = userRepository.findById(newPrimaryId)
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                
+                ticket.setAssignedTechnicianId(newPrimaryId);
+                ticket.setAssignedTechnicianName(newPrimary.getName());
+                
+                ticket.setAdditionalTechnicianIds(
+                    String.join(",", additionalIds.stream()
+                        .map(id -> id.split(",")[0].trim())
+                        .collect(Collectors.toList()))
+                );
+                
+                ticket.setAdditionalTechnicianNames(
+                    String.join(",", additionalIds.stream()
+                        .map(id -> id.split(",")[1].trim())
+                        .collect(Collectors.toList()))
+                );
+            }
+        } else {
+            // Remove from additional
+            Set<String> idSet = csvToSet(ticket.getAdditionalTechnicianIds());
+            Set<String> nameSet = csvToSet(ticket.getAdditionalTechnicianNames());
+            
+            idSet.remove(String.valueOf(technicianId));
+            
+            ticket.setAdditionalTechnicianIds(String.join(",", idSet));
+            ticket.setAdditionalTechnicianNames(String.join(",", nameSet));
+        }
+
+        Ticket updated = ticketRepository.save(ticket);
+        return mapToDTO(updated);
+    }
+
+    public void deleteTicket(Long ticketId, String username) {
+        try {
+            Ticket ticket = ticketRepository.findById(ticketId)
+                    .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
+
+            // Delete ticket - cascade will delete related comments and attachments from DB
+            // File cleanup is handled separately in AttachmentService if needed
+            ticketRepository.delete(ticket);
+        } catch (TicketNotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, 
+                "Error deleting ticket: " + e.getMessage());
+        }
+    }
+
+    public TicketResponseDTO updateCategory(Long ticketId, String category, String username) {
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new TicketNotFoundException("Ticket not found"));
+
+        if (isFinalStatus(ticket.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+                "Cannot update category for a ticket in final status");
+        }
+
+        if (category == null || category.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Category cannot be empty");
+        }
+
+        ticket.setCategory(category);
+        Ticket updated = ticketRepository.save(ticket);
+        return mapToDTO(updated);
     }
 }

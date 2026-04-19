@@ -13,34 +13,174 @@ export default function SignupPage() {
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [nameError, setNameError] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
   const handleChange = (e) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    
+    // Clear error when user starts typing
+    setError("");
+    
+    switch (name) {
+      case 'name':
+        const filteredValue = value.replace(/[^a-zA-Z\s]/g, '');
+        setForm({ ...form, name: filteredValue });
+        setNameError("");
+        break;
+        
+      case 'email':
+        const emailFilteredValue = value.replace(/[A-Z\s]/g, '');
+        setForm({ ...form, email: emailFilteredValue });
+        setEmailError("");
+        
+        // Validate email format
+        if (emailFilteredValue && !emailFilteredValue.endsWith('@gmail.com')) {
+          setEmailError('Email must end with @gmail.com');
+        }
+        break;
+        
+      case 'phone':
+        let phoneValue = value;
+        // Remove any non-digit characters
+        const digitsOnly = phoneValue.replace(/\D/g, '');
+        
+        // If empty, set to empty
+        if (digitsOnly === '') {
+          setForm({ ...form, phone: '' });
+          setPhoneError("");
+          return;
+        }
+        
+        // If first digit is not 0 and it's the first character, don't allow it
+        if (digitsOnly.length === 1 && digitsOnly !== '0') {
+          setPhoneError('Phone number must start with 0');
+          return;
+        }
+        
+        // If first digit is not 0 and we have multiple digits, fix it
+        if (digitsOnly.length > 1 && digitsOnly[0] !== '0') {
+          setPhoneError('Phone number must start with 0');
+          return;
+        }
+        
+        // Limit to 10 digits
+        const limitedValue = digitsOnly.slice(0, 10);
+        
+        setForm({ ...form, phone: limitedValue });
+        setPhoneError("");
+        
+        if (limitedValue.length < 10) {
+          setPhoneError('Phone number must be 10 digits');
+        }
+        break;
+        
+      case 'password':
+        setForm({ ...form, password: value });
+        setPasswordError("");
+        
+        // Check password strength
+        if (value && value.length < 6) {
+          setPasswordError('Password must be at least 6 characters');
+        }
+        break;
+        
+      case 'confirmPassword':
+        setForm({ ...form, confirmPassword: value });
+        setPasswordError("");
+        
+        // Check if passwords match
+        if (value && form.password && value !== form.password) {
+          setPasswordError('Passwords do not match');
+        }
+        break;
+        
+      default:
+        setForm({ ...form, [name]: value });
+    }
+  };
+
+  const validateForm = () => {
+    let isValid = true;
+    
+    // Validate name
+    if (!form.name.trim()) {
+      setNameError('Name is required');
+      isValid = false;
+    } else if (form.name.length < 2) {
+      setNameError('Name must be at least 2 characters');
+      isValid = false;
+    }
+    
+    // Validate email
+    if (!form.email.trim()) {
+      setEmailError('Email is required');
+      isValid = false;
+    } else if (!form.email.endsWith('@gmail.com')) {
+      setEmailError('Email must end with @gmail.com');
+      isValid = false;
+    } else if (!form.email.includes('@')) {
+      setEmailError('Please enter a valid email');
+      isValid = false;
+    }
+    
+    // Validate phone
+    if (!form.phone.trim()) {
+      setPhoneError('Phone number is required');
+      isValid = false;
+    } else if (form.phone.length !== 10) {
+      setPhoneError('Phone number must be 10 digits');
+      isValid = false;
+    } else if (!form.phone.startsWith('0')) {
+      setPhoneError('Phone number must start with 0');
+      isValid = false;
+    }
+    
+    // Validate password
+    if (!form.password.trim()) {
+      setPasswordError('Password is required');
+      isValid = false;
+    } else if (form.password.length < 6) {
+      setPasswordError('Password must be at least 6 characters');
+      isValid = false;
+    }
+    
+    // Validate confirm password
+    if (!form.confirmPassword.trim()) {
+      setPasswordError('Please confirm your password');
+      isValid = false;
+    } else if (form.password !== form.confirmPassword) {
+      setPasswordError('Passwords do not match');
+      isValid = false;
+    }
+    
+    return isValid;
   };
 
   const handleSignup = async () => {
-
-    if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    if (!form.name || !form.email || !form.phone || !form.password) {
-      setError("Please fill in all fields");
-      return;
-    }
-
+    // Clear previous errors
     setError("");
+    setNameError("");
+    setEmailError("");
+    setPhoneError("");
+    setPasswordError("");
+    
+    // Validate form
+    if (!validateForm()) {
+      setError('Please fix the errors below');
+      return;
+    }
+
     setSuccess("");
 
     try {
       console.log('Sending signup request:', {
         name: form.name,
         email: form.email,
-        phone: form.phone
+        phone: form.phone,
+        password: form.password
       });
 
       const response = await fetch("http://localhost:8083/auth/signup", {
@@ -163,35 +303,56 @@ name="name"
 placeholder="Full Name"
 value={form.name}
 onChange={handleChange}
-className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none ${
+  nameError ? 'border-red-500 bg-red-50' : 'border-gray-300'
+}`}
 />
+{nameError && (
+  <p className="mt-1 text-red-500 text-sm">{nameError}</p>
+)}
 
 <input
 type="email"
 name="email"
-placeholder="Email Address"
+placeholder="Email Address (must end with @gmail.com)"
 value={form.email}
 onChange={handleChange}
-className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none ${
+  emailError ? 'border-red-500 bg-red-50' : 'border-gray-300'
+}`}
 />
+{emailError && (
+  <p className="mt-1 text-red-500 text-sm">{emailError}</p>
+)}
 
 <input
 type="tel"
 name="phone"
-placeholder="Phone Number"
+placeholder="Phone Number (10 digits, starting with 0)"
 value={form.phone}
 onChange={handleChange}
-className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none ${
+  phoneError ? 'border-red-500 bg-red-50' : 'border-gray-300'
+}`}
+maxLength="10"
 />
+{phoneError && (
+  <p className="mt-1 text-red-500 text-sm">{phoneError}</p>
+)}
 
 <input
 type="password"
 name="password"
-placeholder="Password"
+placeholder="Password (min 6 characters)"
 value={form.password}
 onChange={handleChange}
-className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none ${
+  passwordError ? 'border-red-500 bg-red-50' : 'border-gray-300'
+}`}
 />
+{passwordError && passwordError.includes('Password') && (
+  <p className="mt-1 text-red-500 text-sm">{passwordError}</p>
+)}
 
 <input
 type="password"
@@ -199,8 +360,13 @@ name="confirmPassword"
 placeholder="Confirm Password"
 value={form.confirmPassword}
 onChange={handleChange}
-className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none"
+className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 outline-none ${
+  passwordError && !passwordError.includes('Password') ? 'border-red-500 bg-red-50' : 'border-gray-300'
+}`}
 />
+{passwordError && passwordError.includes('match') && (
+  <p className="mt-1 text-red-500 text-sm">{passwordError}</p>
+)}
 
 <button
 onClick={handleSignup}

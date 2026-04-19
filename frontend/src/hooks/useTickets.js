@@ -20,10 +20,12 @@ export const useTickets = () => {
     (state) => state.tickets
   );
 
-  const fetchTickets = useCallback(async () => {
+  const fetchTickets = useCallback(async (myTicketsOnly = false) => {
     dispatch(setLoading(true));
     try {
-      const response = await ticketApi.listTickets();
+      const response = myTicketsOnly 
+        ? await ticketApi.listMyTickets()
+        : await ticketApi.listTickets();
       const payload = Array.isArray(response.data)
         ? response.data
         : Array.isArray(response.data?.content)
@@ -33,6 +35,24 @@ export const useTickets = () => {
       dispatch(clearError());
     } catch (err) {
       dispatch(setError(err.response?.data?.message || 'Failed to fetch tickets'));
+    } finally {
+      dispatch(setLoading(false));
+    }
+  }, [dispatch]);
+
+  const fetchTechnicianJobs = useCallback(async () => {
+    dispatch(setLoading(true));
+    try {
+      const response = await ticketApi.listTechnicianJobs();
+      const payload = Array.isArray(response.data)
+        ? response.data
+        : Array.isArray(response.data?.content)
+          ? response.data.content
+          : [];
+      dispatch(setTickets(payload));
+      dispatch(clearError());
+    } catch (err) {
+      dispatch(setError(err.response?.data?.message || 'Failed to fetch technician jobs'));
     } finally {
       dispatch(setLoading(false));
     }
@@ -171,6 +191,23 @@ export const useTickets = () => {
     [dispatch]
   );
 
+  const deleteTicket = useCallback(
+    async (ticketId) => {
+      dispatch(setLoading(true));
+      try {
+        const response = await ticketApi.deleteTicket(ticketId);
+        dispatch(clearError());
+        return response.data;
+      } catch (err) {
+        dispatch(setError(err.response?.data?.message || 'Failed to delete ticket'));
+        throw err;
+      } finally {
+        dispatch(setLoading(false));
+      }
+    },
+    [dispatch]
+  );
+
   return {
     tickets,
     selectedTicket,
@@ -178,6 +215,7 @@ export const useTickets = () => {
     loading,
     error,
     fetchTickets,
+    fetchTechnicianJobs,
     fetchTicket,
     createTicket,
     updateTicket,
@@ -185,5 +223,6 @@ export const useTickets = () => {
     assignTechnician,
     uploadAttachments,
     deleteAttachment,
+    deleteTicket,
   };
 };

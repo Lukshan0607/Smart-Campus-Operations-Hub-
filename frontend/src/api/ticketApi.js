@@ -6,16 +6,23 @@ const API_BASE = '/api';
 const applyAuthHeader = () => {
   const token = getToken();
   const user = getUser();
-  if (token) {
+  const resolvedUserId = user?.userId ?? user?.id;
+  const resolvedUsername = user?.username ?? user?.email ?? user?.name;
+  
+  // Only set Authorization header if token exists and is valid
+  if (token && token.trim().length > 0) {
     axios.defaults.headers.common.Authorization = `Bearer ${token}`;
+  } else {
+    // Remove invalid authorization header
+    delete axios.defaults.headers.common.Authorization;
   }
 
-  if (user?.userId != null) {
-    axios.defaults.headers.common['X-User-Id'] = String(user.userId);
+  if (resolvedUserId != null) {
+    axios.defaults.headers.common['X-User-Id'] = String(resolvedUserId);
   }
 
-  if (user?.username) {
-    axios.defaults.headers.common['X-Username'] = String(user.username);
+  if (resolvedUsername) {
+    axios.defaults.headers.common['X-Username'] = String(resolvedUsername);
   }
 };
 
@@ -131,6 +138,21 @@ const ticketApi = {
   getComments: (ticketId) => {
     applyAuthHeader();
     return axios.get(`${API_BASE}/tickets/${ticketId}/comments`);
+  },
+
+  removeTechnician: (ticketId, technicianId) => {
+    applyAuthHeader();
+    return axios.patch(`${API_BASE}/tickets/${ticketId}/remove-technician/${technicianId}`);
+  },
+
+  deleteTicket: (ticketId) => {
+    applyAuthHeader();
+    return axios.delete(`${API_BASE}/tickets/${ticketId}`);
+  },
+
+  updateCategory: (ticketId, category) => {
+    applyAuthHeader();
+    return axios.patch(`${API_BASE}/tickets/${ticketId}/category`, { category });
   },
 };
 

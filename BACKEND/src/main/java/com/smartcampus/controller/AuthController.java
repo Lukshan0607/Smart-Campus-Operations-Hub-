@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.*;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping({"/auth", "/api/auth"})
 @CrossOrigin(origins = "http://localhost:5173")
 @RequiredArgsConstructor
 public class AuthController {
@@ -123,4 +123,20 @@ public class AuthController {
                 )
         );
     }
+
+                @GetMapping("/technicians")
+                public List<Map<String, Object>> getTechnicians() {
+                return userRepository.findByRole(Role.TECHNICIAN).stream()
+                            .map(user -> {
+                                Map<String, Object> item = new LinkedHashMap<>();
+                                item.put("id", user.getId());
+                                item.put("userId", user.getUserId());
+                                item.put("name", user.getName());
+                                item.put("email", user.getEmail());
+                                item.put("displayName", user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getEmail());
+                                item.put("role", user.getRole());
+                                return item;
+                            })
+                    .toList();
+                }
 }

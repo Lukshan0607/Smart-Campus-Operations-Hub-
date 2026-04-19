@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { FiMenu, FiX, FiUser, FiLogOut, FiSettings } from 'react-icons/fi';
+import { FiMenu, FiX, FiUser, FiLogOut, FiSettings, FiBell } from 'react-icons/fi';
+import notificationApi from '../api/notificationApi';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("sc_user");
@@ -13,6 +16,50 @@ const Header = () => {
       setUser(JSON.parse(storedUser));
     }
   }, []);
+
+  // Fetch notifications when user is logged in
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+    }
+  }, [user]);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isNotificationOpen && !event.target.closest('.notification-dropdown')) {
+        setIsNotificationOpen(false);
+      }
+      if (isProfileOpen && !event.target.closest('.profile-dropdown')) {
+        setIsProfileOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isNotificationOpen, isProfileOpen]);
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await notificationApi.getMyNotifications();
+      setNotifications(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    }
+  };
+
+  const markNotificationAsRead = async (id) => {
+    try {
+      await notificationApi.markAsRead(id);
+      fetchNotifications(); // Refresh notifications
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+
+  const getUnreadCount = () => {
+    return notifications.filter(n => !n.read).length;
+  };
 
   const navigateTo = (path) => {
     window.location.assign(path);
@@ -88,6 +135,84 @@ const Header = () => {
             ) : (
               <div className="relative flex items-center gap-3">
 
+                {/* Notification Bell */}
+                <div className="relative">
+                  <button
+                    onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                    className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <FiBell className="w-5 h-5 text-gray-600" />
+                    {getUnreadCount() > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                        {getUnreadCount()}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Notification Dropdown */}
+                  {isNotificationOpen && (
+                    <div className="notification-dropdown absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                      <div className="p-4 border-b border-gray-200">
+                        <h3 className="font-semibold text-gray-900">Notifications</h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                          {getUnreadCount()} unread
+                        </p>
+                      </div>
+                      
+                      <div className="max-h-96 overflow-y-auto">
+                        {notifications.length === 0 ? (
+                          <div className="p-4 text-center text-gray-500">
+                            <p>No notifications</p>
+                          </div>
+                        ) : (
+                          notifications.map((notification) => (
+                            <div
+                              key={notification.id}
+                              className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
+                                !notification.read ? 'bg-blue-50' : ''
+                              }`}
+                              onClick={() => markNotificationAsRead(notification.id)}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h4 className={`text-sm font-medium ${
+                                    !notification.read ? 'text-gray-900' : 'text-gray-600'
+                                  }`}>
+                                    {notification.title}
+                                  </h4>
+                                  <p className="text-sm text-gray-500 mt-1">
+                                    {notification.message}
+                                  </p>
+                                  <p className="text-xs text-gray-400 mt-2">
+                                    {new Date(notification.createdAt).toLocaleString()}
+                                  </p>
+                                </div>
+                                {!notification.read && (
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      
+                      {notifications.length > 0 && (
+                        <div className="p-3 border-t border-gray-200">
+                          <button
+                            onClick={() => {
+                              // Mark all as read functionality could be added here
+                              setIsNotificationOpen(false);
+                            }}
+                            className="w-full text-center text-sm text-blue-600 hover:text-blue-700"
+                          >
+                            Close
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* User Name */}
                 <span className="text-gray-700 font-medium">
                   {user.name || user.fullName || "User"}
@@ -113,7 +238,7 @@ const Header = () => {
 
                 {/* Dropdown */}
                 {isProfileOpen && (
-                  <div className="absolute right-0 mt-12 w-48 bg-white rounded-lg shadow-lg border py-1 z-50">
+                  <div className="profile-dropdown click-outside absolute right-0 mt-12 w-48 bg-white rounded-lg shadow-lg border py-1 z-50">
 
                     <button
                       onClick={handleProfileClick}

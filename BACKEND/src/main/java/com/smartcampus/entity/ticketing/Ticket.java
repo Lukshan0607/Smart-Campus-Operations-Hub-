@@ -72,6 +72,12 @@ public class Ticket {
     private String assignedTechnicianName;
 
     @Column(columnDefinition = "TEXT")
+    private String additionalTechnicianIds;
+
+    @Column(columnDefinition = "TEXT")
+    private String additionalTechnicianNames;
+
+    @Column(columnDefinition = "TEXT")
     private String resolutionNote;
 
     @Column(columnDefinition = "TEXT")

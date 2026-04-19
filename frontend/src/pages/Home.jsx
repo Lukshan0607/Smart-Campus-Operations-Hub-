@@ -141,12 +141,6 @@ const Home = () => {
           >
             <FiBookOpen /> Browse live resources (API)
           </Link>
-          <Link
-            to="/admin"
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-800 shadow-sm hover:bg-gray-50"
-          >
-            <FiTrendingUp /> Admin dashboard
-          </Link>
         </div>
 
         <div className="px-4 sm:px-6 lg:px-8">
@@ -272,7 +266,7 @@ const Home = () => {
             <div className="text-center">
               <h2 className="text-2xl font-bold mb-4">Quick Actions</h2>
               <p className="text-blue-100 mb-6">Get started with the most common tasks</p>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Link
                   to="/resources"
                   className="bg-white text-blue-600 hover:bg-gray-50 px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center"
@@ -288,13 +282,6 @@ const Home = () => {
                   <FiTool className="w-5 h-5 mr-2" />
                   Tickets (soon)
                 </button>
-                <Link
-                  to="/admin"
-                  className="bg-white text-purple-600 hover:bg-gray-50 px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center"
-                >
-                  <FiFilter className="w-5 h-5 mr-2" />
-                  Admin
-                </Link>
               </div>
             </div>
           </div>

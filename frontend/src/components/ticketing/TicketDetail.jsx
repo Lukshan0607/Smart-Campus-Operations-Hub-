@@ -10,9 +10,11 @@ const TicketDetail = ({
   onAssignTechnician,
   isAdmin,
   isTechnician,
-  canEdit,
+  canEditData,
+  canDeleteTicket,
   onEditTicket,
   onAttachmentsChanged,
+  onDeleteTicket,
 }) => {
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [selectedStatus, setSelectedStatus] = useState(ticket?.status);
@@ -148,7 +150,7 @@ const TicketDetail = ({
         </div>
       )}
 
-      {canEdit && (
+      {canEditData && (
         <div className="mb-6 pb-6 border-b flex gap-3">
           <button
             onClick={onEditTicket}
@@ -159,8 +161,28 @@ const TicketDetail = ({
         </div>
       )}
 
+      {canDeleteTicket && (
+        <div className="mb-6 pb-6 border-b flex gap-3">
+          <button
+            onClick={() => {
+              if (window.confirm('Are you sure you want to delete this ticket? This action cannot be undone.')) {
+                onDeleteTicket?.(ticket.id);
+              }
+            }}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition"
+          >
+            Delete Ticket
+          </button>
+        </div>
+      )}
+
       {/* Attachments */}
-      <AttachmentUpload ticketId={ticket.id} attachments={ticket.attachments || []} onChange={onAttachmentsChanged} />
+      <AttachmentUpload 
+        ticketId={ticket.id} 
+        attachments={ticket.attachments || []} 
+        onChange={onAttachmentsChanged}
+        technicianAssigned={!!ticket.assignedTechnicianId}
+      />
 
       {/* Comments */}
       <CommentSection ticketId={ticket.id} />
