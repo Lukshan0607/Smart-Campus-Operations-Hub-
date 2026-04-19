@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AdminSideNavigation from '../../components/Admin/AdminSideNavigation';
+import AdminSideNavigation from '../../components/admin/AdminSideNavigation';
 
 const AdminDashboardNew = () => {
   const [activeSection, setActiveSection] = useState('dashboard');

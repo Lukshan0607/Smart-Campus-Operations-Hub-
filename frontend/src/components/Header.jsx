@@ -18,6 +18,11 @@ const Header = () => {
     window.location.assign(path);
   };
 
+  const handleProfileClick = () => {
+    setIsProfileOpen(false);
+    navigateTo('/profile');
+  };
+
   const handleLogout = () => {
     localStorage.removeItem("sc_token");
     localStorage.removeItem("sc_user");
@@ -28,9 +33,8 @@ const Header = () => {
   const navigation = [
     { name: 'Home', href: '/', current: window.location.pathname === '/' },
     { name: 'Resources', href: '/resources', current: window.location.pathname === '/resources' },
-    { name: 'Bookings', href: '/bookings', current: window.location.pathname === '/bookings' },
+    { name: 'Bookings', href: '/my-bookings', current: window.location.pathname === '/my-bookings' },
     { name: 'Tickets', href: '/tickets', current: window.location.pathname === '/tickets' },
-    { name: 'Dashboard', href: '/dashboard', current: window.location.pathname === '/dashboard' },
   ];
 
   return (
@@ -94,20 +98,31 @@ const Header = () => {
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100"
                 >
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
-                    <FiUser className="w-4 h-4 text-white" />
-                  </div>
+                  {user?.profilePicture ? (
+                    <img
+                      src={user.profilePicture}
+                      alt="Profile"
+                      className="w-8 h-8 rounded-full object-cover border-2 border-white shadow-sm"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center">
+                      <FiUser className="w-4 h-4 text-white" />
+                    </div>
+                  )}
                 </button>
 
                 {/* Dropdown */}
                 {isProfileOpen && (
                   <div className="absolute right-0 mt-12 w-48 bg-white rounded-lg shadow-lg border py-1 z-50">
 
-                    <a href="#profile" className="block px-4 py-2 text-sm hover:bg-gray-100">
+                    <button
+                      onClick={handleProfileClick}
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                    >
                       <div className="flex items-center gap-2">
                         <FiUser /> Profile
                       </div>
-                    </a>
+                    </button>
 
                     <a href="#settings" className="block px-4 py-2 text-sm hover:bg-gray-100">
                       <div className="flex items-center gap-2">

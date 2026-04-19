@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AdminSideNavigation from '../../components/Admin/AdminSideNavigation';
+import AdminSideNavigation from '../../components/admin/AdminSideNavigation';
 
 const AdminUserManagement = () => {
   const [activeSection, setActiveSection] = useState('users');
@@ -61,7 +61,8 @@ const AdminUserManagement = () => {
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.userId.toLowerCase().includes(searchTerm.toLowerCase());
+                         (user.userId && user.userId.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (user.id && user.id.toString().toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesRole = selectedRole === 'all' || user.role === selectedRole;
     return matchesSearch && matchesRole;
   });
@@ -85,7 +86,7 @@ const AdminUserManagement = () => {
 
       if (response.ok) {
         // User created successfully, refresh users list
-        fetchUsers();
+        await fetchUsers();
         setShowAddUserModal(false);
         setFormData({ name: '', email: '', phone: '', role: 'USER', password: '', status: 'Active' });
       } else {
@@ -119,7 +120,7 @@ const AdminUserManagement = () => {
         });
 
         if (response.ok) {
-          setUsers(users.filter(user => user.id !== userId));
+          await fetchUsers();
           console.log('User deleted successfully:', userId);
         } else {
           const error = await response.text();
@@ -373,6 +374,7 @@ const AdminUserManagement = () => {
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                     placeholder="Enter user name"
+                    autoComplete="off"
                   />
                 </div>
                 <div>
@@ -383,6 +385,7 @@ const AdminUserManagement = () => {
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                     placeholder="Enter email address"
+                    autoComplete="off"
                   />
                 </div>
                 <div>
@@ -393,6 +396,7 @@ const AdminUserManagement = () => {
                     onChange={(e) => setFormData({...formData, phone: e.target.value})}
                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                     placeholder="Enter phone number"
+                    autoComplete="off"
                   />
                 </div>
                 <div>
@@ -427,6 +431,7 @@ const AdminUserManagement = () => {
                       onChange={(e) => setFormData({...formData, password: e.target.value})}
                       className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                       placeholder="Enter password"
+                      autoComplete="new-password"
                     />
                   </div>
                 )}
