@@ -211,9 +211,6 @@ const AdminDashboardNew = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                 </svg>
               </button>
-              <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-                + New Booking
-              </button>
             </div>
           </div>
         </div>
@@ -265,93 +262,7 @@ const AdminDashboardNew = () => {
             </div>
           )}
 
-          {/* New Booking Request Form */}
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700 shadow-sm mb-6">
-            <h2 className="text-lg font-semibold text-white mb-4">New booking request</h2>
-            <form onSubmit={handleBookingSubmit} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Resource</label>
-                <select 
-                  value={bookingForm.resource}
-                  onChange={(e) => setBookingForm({...bookingForm, resource: e.target.value})}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                >
-                  <option value="Lab A-201">Lab A-201</option>
-                  <option value="Lecture Hall B">Lecture Hall B</option>
-                  <option value="Meeting Room 3">Meeting Room 3</option>
-                  <option value="Computing Lab">Computing Lab</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Purpose</label>
-                <input
-                  type="text"
-                  value={bookingForm.purpose}
-                  onChange={(e) => setBookingForm({...bookingForm, purpose: e.target.value})}
-                  placeholder="Group study session"
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Date</label>
-                <input
-                  type="date"
-                  value={bookingForm.date}
-                  onChange={(e) => setBookingForm({...bookingForm, date: e.target.value})}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Expected attendees</label>
-                <input
-                  type="number"
-                  value={bookingForm.expectedAttendees}
-                  onChange={(e) => setBookingForm({...bookingForm, expectedAttendees: e.target.value})}
-                  placeholder="25"
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Start time</label>
-                <input
-                  type="time"
-                  value={bookingForm.startTime}
-                  onChange={(e) => setBookingForm({...bookingForm, startTime: e.target.value})}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">End time</label>
-                <input
-                  type="time"
-                  value={bookingForm.endTime}
-                  onChange={(e) => setBookingForm({...bookingForm, endTime: e.target.value})}
-                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                />
-              </div>
-
-              <div className="md:col-span-2 lg:col-span-3 flex gap-3 mt-4">
-                <button
-                  type="button"
-                  className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Submit booking
-                </button>
-              </div>
-            </form>
-          </div>
-
+          
           {/* Recent Booking Requests */}
           <div className="bg-slate-800 rounded-lg p-6 border border-slate-700 shadow-sm mb-6">
             <div className="flex items-center justify-between mb-4">

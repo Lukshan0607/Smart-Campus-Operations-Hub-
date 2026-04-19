@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FiBookOpen, FiCalendar, FiTool, FiBell, FiArrowRight, FiCheckCircle, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { isAuthenticated } from '../utils/auth';
 import heroStudents from '../assets/hero-students.jpg';
 import heroCampus from '../assets/hero-campus.jpg';
 import heroLibrary from '../assets/hero-library.jpg';
@@ -117,19 +118,15 @@ const Hero = () => {
                 
                 {/* CTA Buttons */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                  <Link
-                    to="/resources"
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 flex items-center justify-center"
-                  >
-                    Get Started
-                    <FiArrowRight className="ml-2" />
-                  </Link>
-                  <Link
-                    to="/admin"
-                    className="bg-white/20 backdrop-blur hover:bg-white/30 text-white px-8 py-3 rounded-lg font-medium border border-white/30 transition-all duration-200 flex items-center justify-center"
-                  >
-                    Admin
-                  </Link>
+                  {!isAuthenticated() ? (
+                    <Link
+                      to="/login"
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-medium transition-all duration-200 transform hover:scale-105 flex items-center justify-center"
+                    >
+                      Get Started
+                      <FiArrowRight className="ml-2" />
+                    </Link>
+                  ) : null}
                 </div>
               </div>
             </div>
