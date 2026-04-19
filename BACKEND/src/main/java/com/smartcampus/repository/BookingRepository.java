@@ -55,4 +55,30 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     int getBookedQuantityForTimeRange(@Param("resourceId") Long resourceId,
                                       @Param("startTime") LocalDateTime startTime,
                                       @Param("endTime") LocalDateTime endTime);
+
+    @Query("""
+        SELECT b FROM Booking b
+        WHERE b.resource.id = :resourceId
+          AND b.id <> :bookingId
+          AND b.startTime < :endTime
+          AND b.endTime > :startTime
+          AND b.status IN ('PENDING', 'APPROVED')
+    """)
+    List<Booking> findConflictingBookingsExcludingCurrent(@Param("resourceId") Long resourceId,
+                                                          @Param("startTime") LocalDateTime startTime,
+                                                          @Param("endTime") LocalDateTime endTime,
+                                                          @Param("bookingId") Long bookingId);
+
+    @Query("""
+        SELECT COALESCE(SUM(b.quantity), 0) FROM Booking b
+        WHERE b.resource.id = :resourceId
+          AND b.id <> :bookingId
+          AND b.startTime < :endTime
+          AND b.endTime > :startTime
+          AND b.status IN ('PENDING', 'APPROVED')
+    """)
+    int getBookedQuantityForTimeRangeExcludingCurrent(@Param("resourceId") Long resourceId,
+                                                      @Param("startTime") LocalDateTime startTime,
+                                                      @Param("endTime") LocalDateTime endTime,
+                                                      @Param("bookingId") Long bookingId);
 }

@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 
 function MyBookingsPage() {
+  const navigate = useNavigate();
+
   const [bookings, setBookings] = useState([]);
   const [histories, setHistories] = useState({});
   const [expandedHistoryId, setExpandedHistoryId] = useState(null);
@@ -14,6 +17,7 @@ function MyBookingsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("ALL");
   const [cancelingId, setCancelingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   const [now, setNow] = useState(Date.now());
 
@@ -43,8 +47,6 @@ function MyBookingsPage() {
     }
   };
 
-//fetchBooking
-
   const fetchBookingHistory = async (bookingId) => {
     try {
       setHistoryLoadingId(bookingId);
@@ -71,6 +73,34 @@ function MyBookingsPage() {
 
     if (!histories[bookingId]) {
       await fetchBookingHistory(bookingId);
+    }
+  };
+
+  const handleEditBooking = (bookingId) => {
+    navigate(`/bookings/${bookingId}/edit`);
+  };
+
+  const handleDeleteBooking = async (bookingId) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this booking?");
+    if (!confirmDelete) return;
+
+    try {
+      setDeletingId(bookingId);
+      setMessage("");
+
+      await api.delete(`/api/bookings/${bookingId}?userId=1`);
+
+      setMessage("Booking deleted successfully");
+      await fetchMyBookings();
+
+      if (expandedHistoryId === bookingId) {
+        await fetchBookingHistory(bookingId);
+      }
+    } catch (error) {
+      console.error("Delete failed", error);
+      setMessage(error?.response?.data?.message || "Delete failed");
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -199,8 +229,9 @@ function MyBookingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="max-w-7xl mx-auto p-6">
           <div className="animate-pulse space-y-6">
             <div className="h-10 w-64 bg-gray-200 rounded"></div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -216,6 +247,7 @@ function MyBookingsPage() {
             </div>
           </div>
         </div>
+        <Footer />
       </div>
     );
   }
@@ -223,8 +255,8 @@ function MyBookingsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
+
       <div className="max-w-7xl mx-auto p-6">
-        {/* Header */}
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
@@ -241,14 +273,12 @@ function MyBookingsPage() {
           </button>
         </div>
 
-        {/* Message */}
         {message && (
           <div className="mb-6 rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 shadow-sm">
             {message}
           </div>
         )}
 
-        {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
             <p className="text-sm text-gray-500">Total</p>
@@ -276,7 +306,6 @@ function MyBookingsPage() {
           </div>
         </div>
 
-        {/* Search + Filter */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-6">
           <div className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between">
             <div className="w-full lg:max-w-md">
@@ -307,7 +336,6 @@ function MyBookingsPage() {
           </div>
         </div>
 
-        {/* Booking List */}
         {filteredBookings.length === 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
             <h3 className="text-xl font-semibold text-gray-800">No bookings found</h3>
@@ -320,6 +348,7 @@ function MyBookingsPage() {
             {filteredBookings.map((booking) => {
               const bookingHistory = histories[booking.id] || [];
               const isHistoryOpen = expandedHistoryId === booking.id;
+              const isPending = booking.status === "PENDING";
 
               return (
                 <div
@@ -327,7 +356,6 @@ function MyBookingsPage() {
                   className="bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition p-6"
                 >
                   <div className="flex flex-col gap-6">
-                    {/* Top row */}
                     <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                       <div>
                         <div className="flex flex-wrap items-center gap-3 mb-2">
@@ -362,6 +390,25 @@ function MyBookingsPage() {
                           {isHistoryOpen ? "Hide History" : "View History"}
                         </button>
 
+                        {isPending && (
+                          <button
+                            onClick={() => handleEditBooking(booking.id)}
+                            className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition"
+                          >
+                            Edit Booking
+                          </button>
+                        )}
+
+                        {isPending && (
+                          <button
+                            onClick={() => handleDeleteBooking(booking.id)}
+                            disabled={deletingId === booking.id}
+                            className="px-4 py-2 rounded-xl bg-red-700 text-white hover:bg-red-800 disabled:bg-red-300 disabled:cursor-not-allowed transition"
+                          >
+                            {deletingId === booking.id ? "Deleting..." : "Delete Booking"}
+                          </button>
+                        )}
+
                         {(booking.status === "PENDING" || booking.status === "APPROVED") && (
                           <button
                             onClick={() => handleCancelBooking(booking.id)}
@@ -374,7 +421,6 @@ function MyBookingsPage() {
                       </div>
                     </div>
 
-                    {/* Current Booking Details */}
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 mb-4">
                         Current Booking Details
@@ -466,7 +512,6 @@ function MyBookingsPage() {
                       </div>
                     </div>
 
-                    {/* Booking History */}
                     {isHistoryOpen && (
                       <div className="border-t border-gray-100 pt-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -529,6 +574,7 @@ function MyBookingsPage() {
           </div>
         )}
       </div>
+
       <Footer />
     </div>
   );

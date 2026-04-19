@@ -23,11 +23,33 @@ const combineDateTime = (date, time) => {
   return `${date}T${time}:00`;
 };
 
+// Split ISO datetime into date + time
+const splitDateTime = (isoString) => {
+  if (!isoString) {
+    return { date: getCurrentDate(), time: getCurrentTime() };
+  }
+
+  const dateObj = new Date(isoString);
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const day = String(dateObj.getDate()).padStart(2, "0");
+  const hours = String(dateObj.getHours()).padStart(2, "0");
+  const minutes = String(dateObj.getMinutes()).padStart(2, "0");
+
+  return {
+    date: `${year}-${month}-${day}`,
+    time: `${hours}:${minutes}`,
+  };
+};
+
 function CreateBookingPage() {
-  const { resourceId } = useParams();
+  const { resourceId, bookingId } = useParams();
   const navigate = useNavigate();
 
+  const isEditMode = !!bookingId;
+
   const [formData, setFormData] = useState({
+    resourceId: resourceId || "",
     startDate: getCurrentDate(),
     startTime: getCurrentTime(),
     endDate: getCurrentDate(),
@@ -43,8 +65,54 @@ function CreateBookingPage() {
   const [messageType, setMessageType] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmTerms, setConfirmTerms] = useState(false);
+  const [loadingBooking, setLoadingBooking] = useState(false);
 
-  // ---------- Validation Functions ----------
+  useEffect(() => {
+    if (isEditMode) {
+      fetchBookingForEdit();
+    }
+  }, [bookingId]);
+
+  const fetchBookingForEdit = async () => {
+    try {
+      setLoadingBooking(true);
+      setMessage("");
+      const user = getUser();
+      const userId = user?.id || 1;
+
+      const response = await api.get(`/api/bookings/${bookingId}?userId=${userId}`);
+      const booking = response.data;
+
+      if (booking.status !== "PENDING") {
+        setMessage("Only pending bookings can be edited.");
+        setMessageType("error");
+        return;
+      }
+
+      const start = splitDateTime(booking.startTime);
+      const end = splitDateTime(booking.endTime);
+
+      setFormData({
+        resourceId: booking.resourceId || "",
+        startDate: start.date,
+        startTime: start.time,
+        endDate: end.date,
+        endTime: end.time,
+        quantity: booking.quantity || 1,
+        purpose: booking.purpose || "",
+        expectedAttendees: booking.expectedAttendees || 1,
+      });
+
+      setConfirmTerms(true);
+    } catch (error) {
+      console.error("Failed to load booking:", error);
+      setMessage(error?.response?.data?.message || "Failed to load booking details.");
+      setMessageType("error");
+    } finally {
+      setLoadingBooking(false);
+    }
+  };
+
   const validateStartDateTime = (startDate, startTime) => {
     if (!startDate) return "Start date is required.";
     if (!startTime) return "Start time is required.";
@@ -67,8 +135,6 @@ function CreateBookingPage() {
     }
     return "";
   };
-
-//validation
 
   const validateQuantity = (value) => {
     const num = Number(value);
@@ -124,6 +190,7 @@ function CreateBookingPage() {
   const handleBlur = (field) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
     let error = "";
+
     switch (field) {
       case "startDateTime":
         error = validateStartDateTime(formData.startDate, formData.startTime);
@@ -145,12 +212,16 @@ function CreateBookingPage() {
       case "expectedAttendees":
         error = validateAttendees(formData.expectedAttendees);
         break;
+      default:
+        break;
     }
+
     setErrors((prev) => ({ ...prev, [field]: error }));
   };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
     if (type === "checkbox") {
       setConfirmTerms(checked);
       if (checked && errors.terms) {
@@ -160,34 +231,40 @@ function CreateBookingPage() {
     }
 
     let newValue = value;
-    if (name === "quantity" || name === "expectedAttendees") {
+    if (name === "quantity" || name === "expectedAttendees" || name === "resourceId") {
       newValue = value === "" ? "" : Number(value);
     }
 
     setFormData((prev) => ({ ...prev, [name]: newValue }));
 
-    // Clear errors for affected fields
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+
     if (name === "startDate" || name === "startTime") {
       if (errors.startDateTime) setErrors((prev) => ({ ...prev, startDateTime: "" }));
-      // Re-validate end time when start changes
+
+      const nextStartDate = name === "startDate" ? newValue : formData.startDate;
+      const nextStartTime = name === "startTime" ? newValue : formData.startTime;
+
       if (formData.endDate && formData.endTime) {
         const endErr = validateEndDateTime(
           formData.endDate,
           formData.endTime,
-          name === "startDate" ? newValue : formData.startDate,
-          name === "startTime" ? newValue : formData.startTime
+          nextStartDate,
+          nextStartTime
         );
         setErrors((prev) => ({ ...prev, endDateTime: endErr }));
       }
     }
+
     if (name === "endDate" || name === "endTime") {
       if (errors.endDateTime) setErrors((prev) => ({ ...prev, endDateTime: "" }));
     }
   };
 
   const handleCancel = () => {
-    navigate(-1); // Go back to previous page
+    navigate(isEditMode ? "/my-bookings" : -1);
   };
 
   const handleSubmit = async (e) => {
@@ -205,23 +282,18 @@ function CreateBookingPage() {
     };
     setTouched(allTouched);
 
-    if (!validateForm()) {
-      const firstError = document.querySelector(".error-border");
-      if (firstError) firstError.scrollIntoView({ behavior: "smooth", block: "center" });
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsSubmitting(true);
 
     try {
       const startTime = combineDateTime(formData.startDate, formData.startTime);
       const endTime = combineDateTime(formData.endDate, formData.endTime);
-
       const user = getUser();
-      const userId = user?.id || 1; // Fallback to 1 for testing
+      const userId = user?.id || 1;
 
       const payload = {
-        resourceId: Number(resourceId),
+        resourceId: Number(formData.resourceId),
         startTime,
         endTime,
         quantity: Number(formData.quantity),
@@ -229,22 +301,25 @@ function CreateBookingPage() {
         expectedAttendees: Number(formData.expectedAttendees),
       };
 
-      await api.post(`/api/bookings?userId=${userId}`, payload);
+      if (isEditMode) {
+        await api.put(`/api/bookings/${bookingId}?userId=${userId}`, payload);
+        setMessage("Booking updated successfully!");
+      } else {
+        await api.post(`/api/bookings?userId=${userId}`, payload);
+        setMessage("Booking created successfully!");
+      }
 
-      setMessage("Booking created successfully!");
       setMessageType("success");
 
       setTimeout(() => {
         navigate("/my-bookings");
       }, 1000);
     } catch (error) {
-      console.error("Booking creation failed:", error);
-      if (error?.response?.data?.fields) {
-        const fieldErrors = Object.values(error.response.data.fields).join(", ");
-        setMessage(fieldErrors);
-      } else {
-        setMessage(error?.response?.data?.message || "Failed to create booking.");
-      }
+      console.error(isEditMode ? "Booking update failed:" : "Booking creation failed:", error);
+      setMessage(
+        error?.response?.data?.message ||
+          (isEditMode ? "Failed to update booking." : "Failed to create booking.")
+      );
       setMessageType("error");
     } finally {
       setIsSubmitting(false);
@@ -253,69 +328,64 @@ function CreateBookingPage() {
 
   const getInputClass = (fieldName) => {
     const hasError = touched[fieldName] && errors[fieldName];
-    return `w-full border-2 rounded-xl px-4 py-3 transition-all duration-200 outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-      hasError
-        ? "border-red-400 bg-red-50"
-        : "border-gray-200 hover:border-blue-300 bg-white"
+    return `w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 transition-all ${
+      hasError ? "border-red-400 bg-red-50" : "border-gray-300 hover:border-gray-400"
     }`;
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center p-2 bg-blue-100 rounded-full mb-4">
-            <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <h1 className="text-4xl font-bold text-gray-900 tracking-tight">Create New Booking</h1>
-          <p className="mt-2 text-gray-600">Select date, time, and details for your reservation</p>
-          <div className="mt-3 inline-flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full text-sm text-blue-700">
-            <span className="font-medium">Resource ID:</span>
-            <span className="font-mono font-bold">{resourceId}</span>
-          </div>
+  if (loadingBooking) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+        <div className="w-full max-w-lg bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+          <p className="text-gray-600">Loading booking details...</p>
         </div>
+      </div>
+    );
+  }
 
-        {/* Message Toast */}
+  return (
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+      <div className="w-full max-w-lg">
         {message && (
           <div
-            className={`mb-6 p-4 rounded-xl shadow-md ${
+            className={`mb-6 p-4 rounded-xl shadow-sm ${
               messageType === "success"
                 ? "bg-green-50 border-l-4 border-green-500 text-green-800"
                 : "bg-red-50 border-l-4 border-red-500 text-red-800"
             }`}
           >
-            <div className="flex items-center gap-3">
-              {messageType === "success" ? (
-                <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
-              )}
-              <p className="font-medium">{message}</p>
-            </div>
+            <p className="text-sm font-medium">{message}</p>
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          <div className="p-6 sm:p-8">
-            {/* Start Date & Time */}
-            <div className="mb-8">
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Start Date & Time
-                </span>
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8">
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {isEditMode ? "Edit Booking" : "Create Booking"}
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              {isEditMode
+                ? "Update your pending booking details"
+                : "Fill in the details to request a booking"}
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">Resource ID</label>
+              <input
+                type="number"
+                name="resourceId"
+                value={formData.resourceId}
+                onChange={handleChange}
+                className={getInputClass("resourceId")}
+                disabled={!isEditMode && !!resourceId}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">Start Date & Time</label>
+              <div className="grid grid-cols-2 gap-3">
                 <input
                   type="date"
                   name="startDate"
@@ -335,21 +405,13 @@ function CreateBookingPage() {
                 />
               </div>
               {touched.startDateTime && errors.startDateTime && (
-                <p className="mt-2 text-sm text-red-600">{errors.startDateTime}</p>
+                <p className="mt-1.5 text-xs text-red-600">{errors.startDateTime}</p>
               )}
             </div>
 
-            {/* End Date & Time */}
-            <div className="mb-8">
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  End Date & Time
-                </span>
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">End Date & Time</label>
+              <div className="grid grid-cols-2 gap-3">
                 <input
                   type="date"
                   name="endDate"
@@ -369,131 +431,94 @@ function CreateBookingPage() {
                 />
               </div>
               {touched.endDateTime && errors.endDateTime && (
-                <p className="mt-2 text-sm text-red-600">{errors.endDateTime}</p>
+                <p className="mt-1.5 text-xs text-red-600">{errors.endDateTime}</p>
               )}
             </div>
 
-            {/* Quantity & Attendees */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Quantity</label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Quantity</label>
                 <input
                   type="number"
                   name="quantity"
                   value={formData.quantity}
                   onChange={handleChange}
                   onBlur={() => handleBlur("quantity")}
-                  min="1"
-                  max="50"
                   className={getInputClass("quantity")}
                 />
                 {touched.quantity && errors.quantity && (
-                  <p className="mt-2 text-sm text-red-600">{errors.quantity}</p>
+                  <p className="mt-1.5 text-xs text-red-600">{errors.quantity}</p>
                 )}
-                <p className="mt-1 text-xs text-gray-500">Max 50 units</p>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Expected Attendees</label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Attendees</label>
                 <input
                   type="number"
                   name="expectedAttendees"
                   value={formData.expectedAttendees}
                   onChange={handleChange}
                   onBlur={() => handleBlur("expectedAttendees")}
-                  min="1"
-                  max="200"
                   className={getInputClass("expectedAttendees")}
                 />
                 {touched.expectedAttendees && errors.expectedAttendees && (
-                  <p className="mt-2 text-sm text-red-600">{errors.expectedAttendees}</p>
+                  <p className="mt-1.5 text-xs text-red-600">{errors.expectedAttendees}</p>
                 )}
-                <p className="mt-1 text-xs text-gray-500">Max 200 people</p>
               </div>
             </div>
 
-            {/* Purpose */}
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Purpose</label>
+            <div>
+              <label className="block text-sm font-medium text-gray-900 mb-2">Purpose</label>
               <input
                 type="text"
                 name="purpose"
                 value={formData.purpose}
                 onChange={handleChange}
                 onBlur={() => handleBlur("purpose")}
-                placeholder="e.g., Team Meeting, Workshop, Client Presentation"
+                placeholder="e.g. Team Meeting"
                 className={getInputClass("purpose")}
               />
               {touched.purpose && errors.purpose && (
-                <p className="mt-2 text-sm text-red-600">{errors.purpose}</p>
-              )}
-              <div className="mt-1 flex justify-end">
-                <span className={`text-xs ${formData.purpose.length > 180 ? "text-orange-500" : "text-gray-400"}`}>
-                  {formData.purpose.length}/200
-                </span>
-              </div>
-            </div>
-
-            {/* Terms */}
-            <div className="mb-8 pt-2">
-              <label className="flex items-start gap-3 cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={confirmTerms}
-                  onChange={handleChange}
-                  className="mt-0.5 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-700">
-                  I confirm that all booking details are accurate and I agree to the{" "}
-                  <span className="text-blue-600 font-medium">cancellation policy</span>.
-                </span>
-              </label>
-              {touched.terms && errors.terms && (
-                <p className="mt-2 text-sm text-red-600 ml-8">{errors.terms}</p>
+                <p className="mt-1.5 text-xs text-red-600">{errors.purpose}</p>
               )}
             </div>
 
-            {/* Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-3 px-6 rounded-xl transition-all duration-200 flex items-center justify-center gap-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Cancel
-              </button>
+            <div className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={confirmTerms}
+                onChange={handleChange}
+                className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-600">
+                I confirm these details are accurate and agree to the{" "}
+                <span className="text-blue-600 font-medium">cancellation policy</span>.
+              </span>
+            </div>
+            {touched.terms && errors.terms && (
+              <p className="text-xs text-red-600">{errors.terms}</p>
+            )}
+
+            <div className="pt-4 flex flex-col gap-3">
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3 px-6 rounded-xl transition-all duration-200 disabled:opacity-70 flex items-center justify-center gap-2 shadow-md"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
               >
-                {isSubmitting ? (
-                  <>
-                    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                    </svg>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Confirm Booking
-                  </>
-                )}
+                {isSubmitting
+                  ? (isEditMode ? "Updating..." : "Processing...")
+                  : (isEditMode ? "Update Booking" : "Confirm Booking")}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCancel}
+                className="w-full bg-white border border-gray-300 text-gray-700 font-semibold py-3 px-4 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
               </button>
             </div>
-          </div>
-
-          <div className="bg-gray-50 px-6 py-4 border-t border-gray-100 text-xs text-gray-500 flex justify-between">
-            <span>📅 All times in your local timezone</span>
-            
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

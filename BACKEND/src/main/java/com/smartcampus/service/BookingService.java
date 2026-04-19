@@ -21,6 +21,10 @@ public interface BookingService {
 
     BookingResponseDTO getBookingById(Long bookingId, Long userId, boolean adminView);
 
+    BookingResponseDTO updateBooking(Long bookingId, Long userId, BookingRequestDTO dto);
+
+    void deleteBooking(Long bookingId, Long userId);
+
     BookingResponseDTO approveBooking(Long bookingId, Long adminId, BookingDecisionDTO dto);
 
     BookingResponseDTO rejectBooking(Long bookingId, Long adminId, BookingDecisionDTO dto);
