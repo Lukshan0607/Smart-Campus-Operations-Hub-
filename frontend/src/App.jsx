@@ -54,6 +54,7 @@ function App() {
       <Route path="/admin/bookings" element={<AdminBookingsPage />} />
        <Route path="/resources" element={<ResourcesPage />} />
        <Route path="/admin/resources" element={<AdminResources />} />
+       <Route path="/bookings/:bookingId/edit" element={<CreateBookingPage />} />
 
 
 

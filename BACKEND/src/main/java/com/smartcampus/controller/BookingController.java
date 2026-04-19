@@ -2,8 +2,6 @@ package com.smartcampus.controller;
 
 import java.util.List;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,7 +9,6 @@ import com.smartcampus.dto.BookingDecisionDTO;
 import com.smartcampus.dto.BookingHistoryDTO;
 import com.smartcampus.dto.BookingRequestDTO;
 import com.smartcampus.dto.BookingResponseDTO;
-import com.smartcampus.entity.Booking.BookingStatus;
 import com.smartcampus.service.BookingService;
 
 import jakarta.validation.Valid;
@@ -48,6 +45,26 @@ public class BookingController {
             @RequestParam(name = "userId", defaultValue = "1") Long userId) {
 
         return ResponseEntity.ok(bookingService.getBookingById(id, userId, false));
+    }
+
+    // Update booking - only pending booking can be updated
+    @PutMapping("/{id}")
+    public ResponseEntity<BookingResponseDTO> update(
+            @PathVariable Long id,
+            @Valid @RequestBody BookingRequestDTO dto,
+            @RequestParam(name = "userId", defaultValue = "1") Long userId) {
+
+        return ResponseEntity.ok(bookingService.updateBooking(id, userId, dto));
+    }
+
+    // Delete booking - only pending booking can be deleted
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(
+            @PathVariable Long id,
+            @RequestParam(name = "userId", defaultValue = "1") Long userId) {
+
+        bookingService.deleteBooking(id, userId);
+        return ResponseEntity.noContent().build();
     }
 
     // Cancel booking

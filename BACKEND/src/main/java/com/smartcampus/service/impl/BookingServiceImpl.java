@@ -23,6 +23,7 @@ import com.smartcampus.exception.InsufficientQuantityException;
 import com.smartcampus.exception.ResourceNotFoundException;
 import com.smartcampus.exception.UnauthorizedResourceAccessException;
 import com.smartcampus.repository.BookingHistoryRepository;
+import com.smartcampus.repository.BookingReminderRepository;
 import com.smartcampus.repository.BookingRepository;
 import com.smartcampus.repository.ResourceRepository;
 import com.smartcampus.service.BookingReminderService;
@@ -36,6 +37,7 @@ public class BookingServiceImpl implements BookingService {
 
     private final BookingRepository bookingRepository;
     private final BookingHistoryRepository bookingHistoryRepository;
+    private final BookingReminderRepository bookingReminderRepository;
     private final ResourceRepository resourceRepository;
     private final BookingReminderService bookingReminderService;
 
@@ -122,6 +124,89 @@ public class BookingServiceImpl implements BookingService {
         }
 
         return toResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponseDTO updateBooking(Long bookingId, Long userId, BookingRequestDTO dto) {
+        Booking booking = bookingRepository.findById(bookingId)
+            .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
+
+        if (!Objects.equals(booking.getUserId(), userId)) {
+            throw new UnauthorizedResourceAccessException("You cannot update this booking");
+        }
+
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new IllegalArgumentException("Only pending bookings can be updated");
+        }
+
+        if (!dto.getEndTime().isAfter(dto.getStartTime())) {
+            throw new IllegalArgumentException("endTime must be after startTime");
+        }
+
+        Resource resource = resourceRepository.findById(dto.getResourceId())
+            .orElseThrow(() -> new ResourceNotFoundException("Resource not found: " + dto.getResourceId()));
+
+        if (resource.getStatus() != Resource.ResourceStatus.ACTIVE) {
+            throw new IllegalArgumentException("Selected resource is not active");
+        }
+
+        int bookedQuantity = bookingRepository.getBookedQuantityForTimeRangeExcludingCurrent(
+            dto.getResourceId(),
+            dto.getStartTime(),
+            dto.getEndTime(),
+            bookingId
+        );
+
+        int availableQuantity = resource.getTotalQuantity() - bookedQuantity;
+        if (availableQuantity < dto.getQuantity()) {
+            throw new InsufficientQuantityException(
+                "Only " + availableQuantity + " item(s) available for the selected time range"
+            );
+        }
+
+        List<Booking> conflicts = bookingRepository.findConflictingBookingsExcludingCurrent(
+            dto.getResourceId(),
+            dto.getStartTime(),
+            dto.getEndTime(),
+            bookingId
+        );
+
+        if (!conflicts.isEmpty() && resource.getTotalQuantity() <= 1) {
+            throw new ConflictBookingException("The selected time slot is already booked");
+        }
+
+        booking.setResource(resource);
+        booking.setStartTime(dto.getStartTime());
+        booking.setEndTime(dto.getEndTime());
+        booking.setQuantity(dto.getQuantity());
+        booking.setPurpose(dto.getPurpose());
+        booking.setExpectedAttendees(dto.getExpectedAttendees());
+
+        booking = bookingRepository.save(booking);
+
+        saveHistory(booking, "UPDATED", userId, "Booking updated by user");
+
+        return toResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public void deleteBooking(Long bookingId, Long userId) {
+        Booking booking = bookingRepository.findById(bookingId)
+            .orElseThrow(() -> new ResourceNotFoundException("Booking not found: " + bookingId));
+
+        if (!Objects.equals(booking.getUserId(), userId)) {
+            throw new UnauthorizedResourceAccessException("You cannot delete this booking");
+        }
+
+        if (booking.getStatus() != BookingStatus.PENDING) {
+            throw new IllegalArgumentException("Only pending bookings can be deleted");
+        }
+
+        bookingHistoryRepository.deleteByBookingId(bookingId);
+        bookingReminderRepository.deleteByBookingId(bookingId);
+        bookingRepository.delete(booking);
     }
 
     @Override
@@ -259,17 +344,22 @@ public class BookingServiceImpl implements BookingService {
         boolean overdue = LocalDateTime.now().isAfter(booking.getEndTime())
             && booking.getStatus() == BookingStatus.APPROVED;
 
-        // Handle resource data safely to avoid lazy loading issues
         String resourceName = "Unknown Resource";
         String resourceType = "UNKNOWN";
         String location = "Unknown Location";
         Long resourceId = null;
-        
+
         if (booking.getResource() != null) {
             resourceId = booking.getResource().getId();
-            resourceName = booking.getResource().getName() != null ? booking.getResource().getName() : "Unnamed Resource";
-            resourceType = booking.getResource().getType() != null ? booking.getResource().getType().name() : "UNKNOWN";
-            location = booking.getResource().getLocation() != null ? booking.getResource().getLocation() : "Unknown Location";
+            resourceName = booking.getResource().getName() != null
+                ? booking.getResource().getName()
+                : "Unnamed Resource";
+            resourceType = booking.getResource().getType() != null
+                ? booking.getResource().getType().name()
+                : "UNKNOWN";
+            location = booking.getResource().getLocation() != null
+                ? booking.getResource().getLocation()
+                : "Unknown Location";
         }
 
         return BookingResponseDTO.builder()
