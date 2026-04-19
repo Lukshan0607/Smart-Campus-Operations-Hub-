@@ -8,6 +8,10 @@ const AdminBottomDetailsPage = () => {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activeFilter, setActiveFilter] = useState('TOTAL');
+
+  const isFinalStatus = (status) => ['RESOLVED', 'CLOSED', 'REJECTED'].includes(status);
+  const isOverdue = (ticket) => ticket.expectedCompletionAt && !isFinalStatus(ticket.status) && new Date(ticket.expectedCompletionAt).getTime() < Date.now();
 
   useEffect(() => {
     const load = async () => {
@@ -30,7 +34,7 @@ const AdminBottomDetailsPage = () => {
     const open = tickets.filter((t) => t.status === 'OPEN').length;
     const inProgress = tickets.filter((t) => t.status === 'IN_PROGRESS').length;
     const done = tickets.filter((t) => t.status === 'RESOLVED' || t.status === 'CLOSED').length;
-    const overdue = tickets.filter((t) => t.expectedCompletionAt && !['RESOLVED', 'CLOSED', 'REJECTED'].includes(t.status) && new Date(t.expectedCompletionAt).getTime() < Date.now()).length;
+    const overdue = tickets.filter((t) => isOverdue(t)).length;
 
     return {
       total: tickets.length,
@@ -41,12 +45,20 @@ const AdminBottomDetailsPage = () => {
     };
   }, [tickets]);
 
-  const recentTickets = useMemo(() => {
+  const filteredTickets = useMemo(() => {
+    if (activeFilter === 'OPEN') return tickets.filter((t) => t.status === 'OPEN');
+    if (activeFilter === 'IN_PROGRESS') return tickets.filter((t) => t.status === 'IN_PROGRESS');
+    if (activeFilter === 'COMPLETED') return tickets.filter((t) => t.status === 'RESOLVED' || t.status === 'CLOSED');
+    if (activeFilter === 'OVERDUE') return tickets.filter((t) => isOverdue(t));
+    return tickets;
+  }, [tickets, activeFilter]);
+
+  const sortedTickets = useMemo(() => {
     return tickets
       .slice()
       .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-      .slice(0, 8);
-  }, [tickets]);
+      .filter((t) => filteredTickets.some((ft) => ft.id === t.id));
+  }, [tickets, filteredTickets]);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -72,20 +84,22 @@ const AdminBottomDetailsPage = () => {
       {!loading && !error && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-            <SmallCard title="Total" value={counts.total} />
-            <SmallCard title="Open" value={counts.open} />
-            <SmallCard title="In Progress" value={counts.inProgress} />
-            <SmallCard title="Completed" value={counts.done} />
-            <SmallCard title="Overdue" value={counts.overdue} />
+            <SmallCard title="Total" value={counts.total} active={activeFilter === 'TOTAL'} onClick={() => setActiveFilter('TOTAL')} />
+            <SmallCard title="Open" value={counts.open} active={activeFilter === 'OPEN'} onClick={() => setActiveFilter('OPEN')} />
+            <SmallCard title="In Progress" value={counts.inProgress} active={activeFilter === 'IN_PROGRESS'} onClick={() => setActiveFilter('IN_PROGRESS')} />
+            <SmallCard title="Completed" value={counts.done} active={activeFilter === 'COMPLETED'} onClick={() => setActiveFilter('COMPLETED')} />
+            <SmallCard title="Overdue" value={counts.overdue} active={activeFilter === 'OVERDUE'} onClick={() => setActiveFilter('OVERDUE')} />
           </div>
 
           <div className="bg-white border rounded-lg p-4 shadow-sm">
-            <p className="text-base font-semibold text-gray-900 mb-3">Recent Tickets</p>
-            {recentTickets.length === 0 ? (
-              <p className="text-sm text-gray-500">No tickets available.</p>
+            <p className="text-base font-semibold text-gray-900 mb-3">
+              Showing {activeFilter === 'TOTAL' ? 'All Tickets' : activeFilter.replace('_', ' ')} ({filteredTickets.length})
+            </p>
+            {sortedTickets.length === 0 ? (
+              <p className="text-sm text-gray-500">No tickets available for this filter.</p>
             ) : (
               <div className="space-y-2">
-                {recentTickets.map((t) => (
+                {sortedTickets.map((t) => (
                   <div key={t.id} className="border rounded p-3 bg-gray-50 flex items-center justify-between gap-2">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">#{t.id} {t.title}</p>
@@ -106,11 +120,15 @@ const AdminBottomDetailsPage = () => {
   );
 };
 
-const SmallCard = ({ title, value }) => (
-  <div className="bg-white border rounded-lg p-4 shadow-sm">
+const SmallCard = ({ title, value, active = false, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`w-full text-left border rounded-lg p-4 shadow-sm transition ${active ? 'bg-blue-50 border-blue-300 ring-1 ring-blue-200' : 'bg-white hover:bg-gray-50'}`}
+  >
     <p className="text-xs font-semibold text-gray-500 uppercase">{title}</p>
     <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-  </div>
+  </button>
 );
 
 export default AdminBottomDetailsPage;

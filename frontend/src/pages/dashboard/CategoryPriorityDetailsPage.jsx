@@ -77,6 +77,49 @@ const CategoryPriorityDetailsPage = () => {
     ])
   );
 
+  const downloadJSON = () => {
+    const data = {
+      summary: {
+        totalTickets: tickets.length,
+        categories: categoryStats.length,
+        priorities: priorityStats.length,
+      },
+      categoryDetails: categoryStats,
+      priorityDetails: priorityStats,
+      matrix: matrix,
+      exportDate: new Date().toISOString(),
+    };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `category-priority-details-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadCSV = () => {
+    let csv = 'Category,Priority,Count\n';
+    matrixCategories.forEach((category) => {
+      matrixPriorities.forEach((priority) => {
+        const count = matrix[category]?.[priority] || 0;
+        csv += `"${category}","${priority}",${count}\n`;
+      });
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `category-priority-matrix-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex min-h-screen bg-gray-50">
       <AdminSideNavigation activeSection="category-priority" setActiveSection={() => {}} />
@@ -87,12 +130,28 @@ const CategoryPriorityDetailsPage = () => {
             <h1 className="text-3xl font-bold text-gray-900">Category & Priority Details</h1>
             <p className="text-sm text-gray-500 mt-1">Detailed breakdown for ticket categories and priority levels</p>
           </div>
-          <button
-            onClick={() => navigate('/admin/tickets')}
-            className="px-4 py-2 rounded-lg border bg-white text-gray-700 hover:bg-gray-50"
-          >
-            ← Back to Admin Dashboard
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={downloadJSON}
+              className="px-4 py-2 rounded-lg border bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium text-sm"
+              title="Download as JSON"
+            >
+              ⬇ JSON
+            </button>
+            <button
+              onClick={downloadCSV}
+              className="px-4 py-2 rounded-lg border bg-green-50 text-green-700 hover:bg-green-100 font-medium text-sm"
+              title="Download as CSV"
+            >
+              ⬇ CSV
+            </button>
+            <button
+              onClick={() => navigate('/admin/tickets')}
+              className="px-4 py-2 rounded-lg border bg-white text-gray-700 hover:bg-gray-50"
+            >
+              ← Back to Admin Dashboard
+            </button>
+          </div>
         </div>
 
       {loading && <p className="text-gray-600">Loading...</p>}
